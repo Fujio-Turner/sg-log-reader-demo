@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Sync Gateway Log Reader GUI</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.js" type="text/javascript"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css" rel="stylesheet" type="text/css"/>
+        <script type="text/javascript">
+
+var items = [];
+var fakeItems = [];
+var graphNames = [];
+
+function bear(){   
+var data = JSON.parse(document.getElementById("data-dump").value); 
+
+var graphShow = graph.graphType.value;
+
+var valueShow = graph.showValue.value;
+
+//console.log(graphShow);
+        
+        var httpList = [];
+        var counter = 0;
+        for (var i in data["HTTP"]){
+            
+          if (i !== "times"){
+            httpList.push([i,data["HTTP"][i]]);
+            
+                for(var h in data["HTTP"][i]){
+                    //console.log(data["HTTP"][i][h]["times"]);
+                    
+                    for(var j in data["HTTP"][i][h]["times"]){
+                        
+                     //data["HTTP"][i][h]["times"][j]
+                     //console.log(j)
+                     //console.log(data["HTTP"][i][h]["times"][j]["amount"]) 
+                     
+                        if(graphShow === 'min'){
+                            if(valueShow === 'show'){
+                                items.push({x:j,y:data["HTTP"][i][h]["times"][j]["num"],group:counter,label:{content:data["HTTP"][i][h]["times"][j]["num"]}});
+                             }else{
+                                items.push({x:j,y:data["HTTP"][i][h]["times"][j]["num"],group:counter});
+                            }
+                        continue;
+                        }
+                     
+                     for(var k in data["HTTP"][i][h]["times"][j]){
+                         
+                         if(k === "times"){
+                         //console.log(data["HTTP"][i][h]["times"][j][k])
+                         
+                         for(var l in data["HTTP"][i][h]["times"][j][k]){
+                          //console.log(data["HTTP"][i][h]["times"][j][k][l])
+                          
+                            if(valueShow === 'show'){
+                                items.push({x:l,y:data["HTTP"][i][h]["times"][j][k][l]["num"],group:counter,label:{content:data["HTTP"][i][h]["times"][j][k][l]["num"]}});
+                            }else{
+                                items.push({x:l,y:data["HTTP"][i][h]["times"][j][k][l]["num"],group:counter});
+            
+                             }
+                            }
+                         }
+                         
+                     }
+                     
+                     //fakeItems.push({x:j,y:data["HTTP"][i][h]["times"][j]["amount"],group:counter,label:{content:data["HTTP"][i][h]["times"][j]["amount"]}});  
+                    }
+                     graphNames.push(i+":"+h);
+                    counter += 1;
+                   
+                }
+            }
+        }
+    //console.log(items); 
+      
+myFunction(items);
+}
+
+    
+ function myFunction(items){ 
+ var container = document.getElementById('visualization');
+  var dataset = new vis.DataSet(items);    
+    var groups = new vis.DataSet();
+    
+    for(var x in graphNames){
+           
+       console.log(graphNames[x])
+       
+       var lineType = 'solid';
+       
+       //if(graphNames[x].){
+           
+           
+       //}
+ 
+       groups.add({
+        id: x,
+        content: graphNames[x],
+        options: {
+            drawPoints: {
+                style: 'circle' // square, circle
+            },
+            shaded: {
+                orientation: 'bottom' // top, bottom
+            }
+        }});   
+    }
+   
+  var options = {    
+   legend:true,
+   moveable:true,
+   zoomable:true,
+   zoomMin:1000,
+   zoomMax:1000000000,
+   height:700
+  };
+
+var graph2d = new vis.Graph2d(container, dataset, groups,options);
+ } 
+</script>
+</head>
+<body>        
+<div id="visualization"></div>
+<textarea id="data-dump" placeholder="PUT SG-LOG-READER JSON HERE" rows="4" cols="40"></textarea>
+<br />
+<form id="graph">
+  <input type="radio" name="graphType" value="min" checked="checked">Per Minute
+  <input type="radio" name="graphType" value="sec">Per Second<br>
+  <br />
+  <input type="radio" name="showValue" value="hide" checked="checked">Hide Values in Graph
+  <input type="radio" name="showValue" value="show">Show Values in Graph<br>
+  <br />
+<input type="button" value="Make Graph" id="make-graph" onclick="bear()">
+</form>
+    </body>
+</html>
