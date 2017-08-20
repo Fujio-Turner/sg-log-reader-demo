@@ -331,7 +331,7 @@ class SGLOGREADER():
 
 			if "HTTP" in self.masterConfig:
 				if "DELETE" in self.masterConfig["HTTP"]:
-					if dtype in self.masterConfig["HTTP"]["DELETE"]:
+					if dType in self.masterConfig["HTTP"]["DELETE"]:
 						if "times" in self.masterConfig["HTTP"]["DELETE"][dType]:
 							if lineTime in self.masterConfig["HTTP"]["DELETE"][dType]["times"]:
 								self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime]["num"] += 1
