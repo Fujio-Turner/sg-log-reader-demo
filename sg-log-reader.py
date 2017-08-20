@@ -10,7 +10,7 @@ class SGLOGREADER():
 	file = ''
 	debug = False
 	dotimes = False
-	dotrans = True
+	dotrans = False
 	sgRestart = {"r":False}
 	masterConfig = {}
 	tempTransData = {}

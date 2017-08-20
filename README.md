@@ -23,7 +23,7 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 -Paste that JSON into the textarea box and click "Make Graph".
 
 
-**Q:** What do I need to use the fantansic tool?
+**Q:** What do I need to use this fantansic tool?
 
 **A:**
 
