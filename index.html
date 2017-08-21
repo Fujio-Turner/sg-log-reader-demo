@@ -142,7 +142,8 @@ var valueTimes = graph.showTimes.value;
                                    }
                                 }
                              }
-                     
+          
+                        
                      //fakeItems.push({x:j,y:data["HTTP"][i][h]["times"][j]["amount"],group:counter,label:{content:data["HTTP"][i][h]["times"][j]["amount"]}});  
                     }
                      graphNames.push(i+":"+h);
@@ -155,9 +156,27 @@ myFunction(items);
 
 function checkDataType(dType=''){
     var opt = {"line":"stroke-dasharray:1 0;","point":"circle","color":false,"fill":false};
-    if(dType.includes("POST:") || dType.includes("PUT:")){opt["line"] = "stroke-dasharray:10 5 2 5;";}
+    if(dType.includes("POST:") || dType.includes("PUT:")){
+        opt["line"] = "stroke-dasharray:10 5 2 5;";
+    /*
+       switch(dType) {
+        case "POST:_changes":
+            opt["color"] = "orange";
+            opt["fill"]="orange";
+            break;
+        case "POST:_bulk_docs":
+            opt["color"] = "purple";
+            break;
+        }
+        */
+        }
+    if(dType.includes("POST:_bulk_get")){
+        opt["line"] = "stroke-dasharray:1 0;"; 
+        //opt["color"] = "green"; 
+    } //Bulk_get back to solide
+    
     if(dType.includes("ADMIN:")){ opt["point"] = "square"; opt["line"] = "stroke-dasharray:2 2;";}
-    if(dType.includes("DELETE")){ opt["color"] = "red"; opt["fill"]="red";}
+    if(dType.includes("DELETE")){ opt["color"] = "red"; opt["fill"]="red"; opt["line"] = "stroke-dasharray:2 2;";}
     return opt;
 }
 
@@ -176,8 +195,7 @@ function checkDataType(dType=''){
         var sti = 'circle';
         
         if(yup["line"] !== false){gStyle = gStyle +yup["line"];}
-        if(yup["color"] !== false){gStyle = gStyle + "stroke:"+yup["color"]+";";};
-        if(yup["fill"] !== false){gStyle = gStyle + "fill:"+yup["fill"]+";";};
+        if(yup["color"] !== false){gStyle = gStyle + "stroke:"+yup["color"]+";fill:"+yup["color"]+";"};
         if(yup["point"] !== false){sti = yup["point"];};
    
        groups.add({
