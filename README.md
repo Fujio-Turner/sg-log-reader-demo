@@ -18,7 +18,7 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 ```
 -Open the test.json file and copy/paste that JSON
 
--Start a local web server with the included index.html 
+-Open index.html with a browser or start a local web server with the included index.html 
 
 -Paste that JSON into the textarea box and click "Make Graph".
 
@@ -29,7 +29,7 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 
 -Python 2.6+ installed 
 
--Local Web Server ,example [MAMP](https://www.mamp.info/en/) , for the index.html file.
+-Local Web Server ,example [MAMP](https://www.mamp.info/en/) , for the index.html file or open index.html with a browser.
 
 
 
