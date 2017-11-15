@@ -117,15 +117,16 @@ class SGLOGREADER():
 		responseType = 'unknown'
 		responseTime = re.findall('\(.*?\)$',response[1]) #start at the end of the line.
 
-		if len(responseTime) == 0:
-			return
-		cleanedResponseTime = responseTime[0].replace("(","").replace(")","").split(" ")
+		self.processTransTimes(line,"","","response",lineTime,lineTimeMax,lineTimeMil)
+		
+		if len(responseTime) != 0:
+			cleanedResponseTime = responseTime[0].replace("(","").replace(")","").split(" ")
 	
 		#trans = re.findall(r'#\d+',line)
 			#if self.debug == True:
 			#print str(trans[0]) + " :"+lineTime+' :End'
 
-		self.processTransTimes(line,"","","response",lineTime,lineTimeMax,lineTimeMil)
+
 
 
 	def processChanges(self,line='',dType='',lineTime='',lineTimeSec='',lineTimeMil=''):
