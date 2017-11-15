@@ -116,6 +116,9 @@ class SGLOGREADER():
 		response = line.split(" --> ")
 		responseType = 'unknown'
 		responseTime = re.findall('\(.*?\)$',response[1]) #start at the end of the line.
+
+		if len(responseTime) == 0:
+			return
 		cleanedResponseTime = responseTime[0].replace("(","").replace(")","").split(" ")
 	
 		#trans = re.findall(r'#\d+',line)

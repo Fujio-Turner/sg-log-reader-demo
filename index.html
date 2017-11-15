@@ -9,8 +9,15 @@ and open the template in the editor.
         <title>Sync Gateway Log Reader GUI</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+         <script src="assets/vis.min.js" type="text/javascript"></script>
+          <link href="assets/vis.min.css" rel="stylesheet" type="text/css"/> 
+        <!--
+          /*
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.js" type="text/javascript"></script>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css" rel="stylesheet" type="text/css"/>       
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css" rel="stylesheet" type="text/css"/>  
+        */
+        -->
 <style>
 .container {
     width: 90%;
@@ -80,6 +87,7 @@ var data = JSON.parse(document.getElementById("data-dump").value);
 var graphShow  = graph.graphType.value;
 var valueShow  = graph.showValue.value;
 var valueTimes = graph.showTimes.value;
+var graphAxis  = graph.graphAxis.value;
         
         var httpList = [];
         var counter = 0;
@@ -104,7 +112,8 @@ var valueTimes = graph.showTimes.value;
                                 
                                 if ("d" in data["HTTP"][i][h]["times"][j]){
                                         cString = cString + " ("+data["HTTP"][i][h]["times"][j]["d"].slice(0,-7)+")";
-                                         items.push({x:j,y:data["HTTP"][i][h]["times"][j]["num"],group:counter,label:{content:cString}});
+                                        items.push({x:j,y:data["HTTP"][i][h]["times"][j]["num"],group:counter,label:{content:cString}});
+                                          
                                 }else{
                                     items.push({x:j,y:data["HTTP"][i][h]["times"][j]["num"],group:counter,label:{content:cString}});
                                 }
@@ -127,9 +136,21 @@ var valueTimes = graph.showTimes.value;
 
                                           if(valueTimes === 'show'){
                                             if ("d" in data["HTTP"][i][h]["times"][j][k][l] ){
+                                                 //cString = cString + " ("+data["HTTP"][i][h]["times"][j][k][l]["d"].slice(3)+")";
+                                              
+                                                if(graphAxis === "slow"){
+                                                  cString = cString + " total";
+                                                  
+                                                  
+                                                  console.log(data["HTTP"][i][h]["times"][j][k][l]["d"].slice(3))
+                                                 items.push({x:l,y:data["HTTP"][i][h]["times"][j][k][l]["d"].slice(3),group:counter,label:{content:cString}});
+         
+                                                }else{
                                                  cString = cString + " ("+data["HTTP"][i][h]["times"][j][k][l]["d"].slice(3)+")";
                                                  items.push({x:l,y:data["HTTP"][i][h]["times"][j][k][l]["num"],group:counter,label:{content:cString}});
-                                             }else{
+                                                }
+                                                 
+                                            }else{
                                                  items.push({x:l,y:data["HTTP"][i][h]["times"][j][k][l]["num"],group:counter,label:{content:'n/a'}});
                                              }
                                           }else{
@@ -151,7 +172,8 @@ var valueTimes = graph.showTimes.value;
                 }
             }
         }      
-myFunction(items);
+ //console.log(items);
+ myFunction(items);
 }
 
 function checkDataType(dType=''){
@@ -187,6 +209,7 @@ function checkDataType(dType=''){
  var container = document.getElementById('visualization');
  var dataset = new vis.DataSet(items);    
  var groups = new vis.DataSet();
+ var graphAxis  = graph.graphAxis.value;
     
     for(var x in graphNames){
                   
@@ -208,6 +231,9 @@ function checkDataType(dType=''){
         }});   
     }
     
+  var yAxisTitle = "Number per (min or sec)"  
+  if(graphAxis === "slow"){ yAxisTitle = "Slowest Response Time per HTTP call";}
+    
   var options = {    
    legend:true,
    moveable:true,
@@ -218,7 +244,7 @@ function checkDataType(dType=''){
    dataAxis: {
             showMinorLabels: true,
             left: {
-                title: {text: 'Number per (min or sec)'}
+                title: {text: yAxisTitle}
             }
         }
   };
@@ -240,6 +266,12 @@ graph2d = new vis.Graph2d(container, dataset, groups,options);
   <br />
   <input type="radio" name="graphType" value="min" >Per Minute
   <input type="radio" name="graphType" value="sec" checked="checked">Per Second<br>
+  </div>
+   <div class="one">
+  Graph Y-axis
+  <br />
+  <input type="radio" name="graphAxis" value="slow" >Slowest Response
+  <input type="radio" name="graphAxis" value="totol" checked="checked">Total Response<br>
   </div>
   <div class="one">
   Show Data Values on Graph
