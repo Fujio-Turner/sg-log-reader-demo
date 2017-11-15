@@ -12,6 +12,7 @@ class SGLOGREADER():
 	dotimes = False
 	dotrans = False
 	sgRestart = {"r":False}
+	logTimeOffset = 0
 	masterConfig = {}
 	tempTransData = {}
 	timesSGlog = {}
@@ -30,7 +31,7 @@ class SGLOGREADER():
 		for line in file:
 
 			if self.debug == True:
-				print "line: " + str(onLine) 
+				print("line: " + str(onLine)) 
 
 			processedTimeStamp = self.processTimeStamp(line,onLine)
 			#print processedTimeStamp
@@ -48,7 +49,7 @@ class SGLOGREADER():
 			self.masterConfig.update({"trans":self.tempTransData})
 		#print json.dumps(self.tempTransData)
 		if self.debug == False:
-			print json.dumps(self.masterConfig)
+			print(json.dumps(self.masterConfig))
 		
 	def processHTTP(self,line='',lineTimeMin='',lineTimeMax='',lineTimeMil=''):
 
@@ -127,12 +128,10 @@ class SGLOGREADER():
 			#print str(trans[0]) + " :"+lineTime+' :End'
 
 
-
-
 	def processChanges(self,line='',dType='',lineTime='',lineTimeSec='',lineTimeMil=''):
 
 		if self.debug == True:
-			print "_changes"
+			print("_changes")
 
 		if "HTTP" in self.masterConfig:
 			if dType in self.masterConfig["HTTP"]:
@@ -190,12 +189,12 @@ class SGLOGREADER():
 
 		if dType == "/_changes":
 			if self.debug == True:
-				print "_changes"
+				print("_changes")
 			self.processChanges(line,"GET",lineTime,lineTimeSec,lineTimeMil)
 			return True
 
 		if self.debug == True:
-			print "GET: " + dType
+			print("GET: " + dType)
 
 		if "HTTP" in self.masterConfig:
 			if "GET" in self.masterConfig["HTTP"]:
@@ -312,7 +311,7 @@ class SGLOGREADER():
 		#processing _changes
 		if dType == "_changes":
 			if self.debug == True:
-					print "_changes"
+					print("_changes")
 			self.processChanges(line,"POST",lineTime,lineTimeSec,lineTimeMil)
 			return True
 
@@ -427,9 +426,9 @@ class SGLOGREADER():
 
 			if self.debug == True:
 				if dataAsk == 'request':
-					print str(trans[0])  + " :"+lineTimeMil+' :Start'
+					print(str(trans[0])  + " :"+lineTimeMil+' :Start')
 				else:
-					print str(trans[0])  + " :"+lineTimeMil+' :End'
+					print(str(trans[0])  + " :"+lineTimeMil+' :End')
 
 
 			if trans[0] in self.tempTransData:				
@@ -462,14 +461,17 @@ class SGLOGREADER():
 			return True
 
 	def processTimeStamp(self,line='',linePosition = 0):
-			timestamplong = str(line[:23])
-			
+			#timestamplong = str(line[:23])
+			tl = 23 + self.logTimeOffset
+			timestamplong = str(line[self.logTimeOffset:tl])
+		
 			if len(timestamplong) <= 1:
 				return False
 			#print "show :"+ str(len(timestamp)) + ":end"
 			#exit()
 			if timestamplong[10] == "T":
 				timestamplong = re.sub("T", " ", timestamplong)
+
 			timestamp =	timestamplong[:19]
 			timestampMinute = timestamp[:16]
 			#per minutel/second
@@ -491,7 +493,7 @@ class SGLOGREADER():
 			return {"min":timestampMinute,"sec":timestamp,"mil":timestamplong}
 
 	def checkSGrestart(self,lineParsed=0):
-		print 'yes'
+		print('yes')
 
 if __name__ == "__main__":
 	
