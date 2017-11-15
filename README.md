@@ -6,11 +6,10 @@ Trying to find the _changes that is just too slow?  ... Yes sir e
 
 Just use the new and improved SG-LOG-READER and parse through those pesky logs lickety split.
 
-**FAQ**
 
-**Q:** How dose the SG-LOG-READER work?
+**HOW TO USE**
 
-**A:** It goes line by line looking for the nuggets of information you need so you don't have to.
+**RUNNING**
 
 -Just run the pythen script and tell it where the sync_gateway_error.log is
 ```
@@ -22,7 +21,23 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 
 -Paste that JSON into the textarea box and click "Make Graph".
 
+**Timestamp log offset**
 
+Sometimes the Sync Gateway logs have additional timestamps or namespacing in front the the Sync Gateway's own time stamp in the log. 
+
+EXAMPLE BELOW
+
+`16:11:47.050535 2017-11-09T16:11:47.050-06:00` 
+
+In the above `16:11:47.050535` is not needed, but `2017-11-09T16:11:47.050` is needed.
+So to get the Sync Gateway created timestamp you can set a offset to get to `2017-11-09T16:11:47.050`.
+```
+logTimeOffset = 0  to logTimeOffset = 16
+```
+You have to change it in the python file itself sg-log-reader.py on line 15.
+
+
+**FAQ**
 
 **Q:** What do I need to use this fantansic tool?
 
@@ -32,7 +47,6 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 -Python 2.6+ installed 
 
 -Local Web Server ,example [MAMP](https://www.mamp.info/en/) , for the index.html file or open index.html with a browser.
-
 
 
 
