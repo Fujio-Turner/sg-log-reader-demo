@@ -7,6 +7,10 @@ Trying to find the _changes that is just too slow?  ... Yes sir e
 Just use the new and improved SG-LOG-READER and parse through those pesky logs lickety split.
 
 
+
+<img src="img/sg-log-graph-sample.png">
+
+
 **HOW TO USE**
 
 **RUNNING**
