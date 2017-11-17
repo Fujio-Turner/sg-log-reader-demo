@@ -8,7 +8,7 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 
 
 
-<img src="img/sg-log-graph-sample.png">
+<img src="img/sg-log-graph-sample.png" width="75%">
 
 
 **HOW TO USE**
