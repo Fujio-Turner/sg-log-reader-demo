@@ -27,7 +27,7 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 
 **Timestamp log offset**
 
-Sometimes the Sync Gateway logs have additional timestamps or namespacing in front the the Sync Gateway's own time stamp in the log. 
+Sometimes the Sync Gateway logs have additional timestamps or namespacing in front of Sync Gateway's own time stamp in the log. 
 
 EXAMPLE BELOW
 

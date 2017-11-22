@@ -445,7 +445,8 @@ class SGLOGREADER():
 							d1 = datetime.strptime(self.tempTransData[trans[0]]["s"],"%Y-%m-%d %H:%M:%S.%f")
 							d2 = datetime.strptime(lineTimeMil,"%Y-%m-%d %H:%M:%S.%f")
 							d3 = str(d2 - d1)[:-3]
-							#print str(d3/1000)
+							#print(str(d1))
+							#print(str(d3/1000))
 							self.tempTransData[trans[0]].update({"d":d3})
 							if 'd' in self.masterConfig["HTTP"][self.tempTransData[trans[0]]["t"]][self.tempTransData[trans[0]]["v"]]["times"][self.tempTransData[trans[0]]["sec"][:-3]]["times"][self.tempTransData[trans[0]]["sec"]]:
 								#have to compare the highest one and replace if bigger
@@ -467,11 +468,12 @@ class SGLOGREADER():
 		
 			if len(timestamplong) <= 1:
 				return False
-			#print "show :"+ str(len(timestamp)) + ":end"
-			#exit()
+
 			if timestamplong[10] == "T":
 				timestamplong = re.sub("T", " ", timestamplong)
 
+			#print(str(timestamplong))
+			#exit()
 			timestamp =	timestamplong[:19]
 			timestampMinute = timestamp[:16]
 			#per minutel/second
