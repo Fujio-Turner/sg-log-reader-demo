@@ -29,10 +29,12 @@ class SGLOGREADER():
 
 		onLine = 1 		 		
 		for line in file:
-
 			if self.debug == True:
 				print("line: " + str(onLine)) 
 
+			if "WARNING:" in line:
+				continue
+				
 			processedTimeStamp = self.processTimeStamp(line,onLine)
 			#print processedTimeStamp
 			if processedTimeStamp == False:
@@ -41,6 +43,8 @@ class SGLOGREADER():
 			 processedHttp = self.processHTTP(line,processedTimeStamp["min"],processedTimeStamp["sec"],processedTimeStamp["mil"])
 			if " HTTP+:" in line:
 			 processedHttp = self.processHTTPplus(line,processedTimeStamp["min"],processedTimeStamp["sec"],processedTimeStamp["mil"])
+			if " Sync:" in line:
+			 processedSync = self.processSync(line,processedTimeStamp["min"],processedTimeStamp["sec"],processedTimeStamp["mil"])
 			onLine += 1
 
 		file.close()
@@ -67,10 +71,11 @@ class SGLOGREADER():
 		elif "DELETE" in line:
 			self.processDelete(line,lineTimeMin,lineTimeMax,lineTimeMil)
 			httpType = "DELETE"
+		'''
 		else:
 			self.processHTTPother(line,'other',lineTimeMin,lineTimeMax,lineTimeMil)
 			httpType = "other"
-
+		'''
 
 		#self.processTransTimes(line,'request',lineTimeMin,lineTimeMax)
 
@@ -386,8 +391,72 @@ class SGLOGREADER():
 			self.processTransTimes(line,"DELETE",dType,"request",lineTime,lineTimeSec,lineTimeMil)
 			return True	
 
+	def processSync(self,line = '',lineTime='',lineTimeMax='',lineTimeMil=''):
+		response = line.split(" --> ")
+		responseType = 'unknown'
+		responseTime = re.findall('\(.*?\)$',response[1]) #start at the end of the line.
+
+		self.processTransTimes(line,"","","response",lineTime,lineTimeMax,lineTimeMil)
+		
+		if len(responseTime) != 0:
+			cleanedResponseTime = responseTime[0].replace("(","").replace(")","").split(" ")
+	
+		#trans = re.findall(r'#\d+',line)
+			#if self.debug == True:
+			#print str(trans[0]) + " :"+lineTime+' :End'
+
+	def processSync(self,line='',lineTime='',lineTimeSec='',lineTimeMil=''):
+
+			dType = 'Sync'
+
+			print("Its Hitting the Sync")
+
+			'''
+			if "/_local/" in line:
+				dType ="_local"
+			elif "/_role/" in line:
+				dType ="ADMIN:_role"
+			elif "/_design/" in line:
+				dType ="ADMIN:_design"
+			elif "/_user/" in line:
+				dType ="ADMIN:_user"
+			elif "/_session/" in line:
+				dType ="ADMIN:_session"
+			'''		
+			
+			if "Sync" in self.masterConfig:
+				if "Sending" in self.masterConfig["Sync"]:
+					if dType in self.masterConfig["Sync"]["Sending"]:
+						if "times" in self.masterConfig["Sync"]["Sending"][dType]:
+							if lineTime in self.masterConfig["Sync"]["Sending"][dType]["times"]:
+								self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["num"] += 1
+								if "times" in self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]:
+									if lineTimeSec in self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["times"]:
+										self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
+									else:
+										self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
+								else:
+									self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
+							else:
+								self.masterConfig["Sync"]["Sending"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
+						else:
+							self.masterConfig["Sync"]["Sending"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
+					else:
+						self.masterConfig["Sync"]["Sending"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
+				else:
+					self.masterConfig["Sync"].update({"Sending":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
+			else:
+				self.masterConfig.update({"Sync":{"Sending":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
+			
+
+			self.processTransTimes(line,"Sending",dType,"request",lineTime,lineTimeSec,lineTimeMil)
+			return True	
+
 
 	def processTransTimes(self,line='',rType = 'POST',rValue = '_changes',dataAsk = 'request',lineTimeMin='',lineTimeMax='',lineTimeMil=''):
+
+			if(line[0:5] == "_time="):  #sg process logs puts _time= in string
+				return False
 
 			trans = re.findall(r'#\d+',line)
 
@@ -466,6 +535,9 @@ class SGLOGREADER():
 			tl = 23 + self.logTimeOffset
 			timestamplong = str(line[self.logTimeOffset:tl])
 		
+			if line[0:6] == "_time=": #sg-process logs put _time= in front of their timestamp
+				return False
+
 			if len(timestamplong) <= 1:
 				return False
 
