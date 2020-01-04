@@ -1,576 +1,251 @@
 #!/usr/bin/python
 import sys
-import re
+sys.path.insert(0, r'/usr/local/lib/python2.7/site-packages/')
+
 import json
-import datetime
-from datetime import datetime
+from couchbase.cluster import Cluster
+from couchbase.cluster import PasswordAuthenticator
+import couchbase.subdocument as SD
+import re
 
-class SGLOGREADER():
 
-	file = ''
+class work():
+
 	debug = False
-	dotimes = False
-	dotrans = False
-	sgRestart = {"r":False}
-	logTimeOffset = 0
-	masterConfig = {}
-	tempTransData = {}
-	timesSGlog = {}
-
+	cb = None
+	sgLogName = "sg_debug.log"
+	cbHost = "127.0.0.1"
+	cbUser = "Administrator"
+	cbPass = "password"
+	cbBucket = "bucket"
+	logData = None
+	wsIdList = []
+	sgDtLineOffset = 0
+	sgLogTag = "default"
+	
 	def __init__(self,file):
-		self.file = file
-	
-	def processLog(self):
+		self.readConfigFile(file)
+		self.makeCB()
+		self.openSgLogFile()
 
-		file = open(self.file,"r")
+	def makeCB(self):
+		cluster = Cluster('couchbase://'+self.cbHost)
+		authenticator = PasswordAuthenticator(self.cbUser, self.cbPass)
+		cluster.authenticate(authenticator)
+		try:
+			self.cb = cluster.open_bucket(self.cbBucket)
+		except:
+			print("Error: Could not connect to CB Cluster: " , self.cbHost ," as: ",self.cbUser )
+			exit()
 
-		self.masterConfig.update({"parsedFileName":self.file})
-		self.masterConfig.update({"timeScriptRan":str(datetime.now())})
+	def readConfigFile(self,configFile):
+		a = open(configFile, "rb" )
+		
+		if self.debug == True:
+			print(a.read())
 
-		onLine = 1 		 		
-		for line in file:
+		b = json.loads(a.read())
+		self.sgLogName = b["file-to-parse"]
+		self.cbHost = b["cb-cluster-host"]
+		self.cbBucket = b["cb-bucket-name"]
+		self.cbUser = b["cb-bucket-user"]
+		self.cbPass = b["cb-bucket-user-password"]
+		self.debug = b["debug"]
+		self.sgDtLineOffset = b["dt-log-line-offset"]
+		self.sgLogTag = b["log-name"]
+		a.close()
+
+	def openSgLogFile(self):
+		bigOne = []
+		a = open(self.sgLogName, "r")
+		for x in a:
+			bigOne.append(x.rstrip('\r|\n'))
+		a.close()
+		self.logData = bigOne
+		if self.debug == True:
+			print(self.logData)
+
+	def findWsId(self):
+		ws = []
+		index = 0
+		for x in self.logData:
+			if "/_blip" in x: 
+				#get name of user
+				userN = self.getUserName(x)
+				#get WSnumber
+				c = re.findall(r"\[([A-Za-z0-9_]+)\]", self.logData[index+1])
+				if len(c) > 1:
+					#print(c[1])
+					ws.append({"ws":c[1],"usr":userN[1],"sgDb":userN[0],"startLine":index+1})
+			index +=1
+		self.wsIdList = ws
+		return self.wsIdList
+
+
+	def getUserName(self,line):
+		c = line.split(" ")
+		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
+		sgDb = c[6].split("/")[1]
+		usrN = c[-1].rstrip(')')
+		return [sgDb,usrN]
+
+	def getDataPerWsId(self,wsList):
+		for x in wsList:
+			r = self.loopLog(x["ws"],x["startLine"])
+			dt = r[0][0].split(" ")
+			tRow = 0
+			if r[2] != None:
+				tRow = r[2]
+			if r[3] != None:
+				tRow = tRow + r[3]
+
+			d = {
+				"type":"byWsId",
+				"usr":x["usr"],
+				"log":r[0],
+				"dt":dt[0],
+				"sgDb":x["sgDb"],
+				"sin":r[1],
+				"cRow":r[2],
+				"qRow":r[3],
+				"tRow":tRow,
+				"tag":self.sgLogTag
+				}
+
 			if self.debug == True:
-				print("line: " + str(onLine)) 
-
-			if "WARNING:" in line:
-				continue
-				
-			processedTimeStamp = self.processTimeStamp(line,onLine)
-			#print processedTimeStamp
-			if processedTimeStamp == False:
-				continue
-			if " HTTP:" in line:
-			 processedHttp = self.processHTTP(line,processedTimeStamp["min"],processedTimeStamp["sec"],processedTimeStamp["mil"])
-			if " HTTP+:" in line:
-			 processedHttp = self.processHTTPplus(line,processedTimeStamp["min"],processedTimeStamp["sec"],processedTimeStamp["mil"])
-			if " Sync:" in line:
-			 processedSync = self.processSync(line,processedTimeStamp["min"],processedTimeStamp["sec"],processedTimeStamp["mil"])
-			onLine += 1
-
-		file.close()
-
-		if self.dotrans == True:
-			self.masterConfig.update({"trans":self.tempTransData})
-		#print json.dumps(self.tempTransData)
-		if self.debug == False:
-			print(json.dumps(self.masterConfig))
-		
-	def processHTTP(self,line='',lineTimeMin='',lineTimeMax='',lineTimeMil=''):
-
-		## TYPE
-		httpType = "Other"
-		if "POST" in line:
-			self.processPost(line,lineTimeMin,lineTimeMax,lineTimeMil)
-			httpType = "POST"
-		elif "GET" in line:
-			httpType = "GET"
-			self.processGet(line,lineTimeMin,lineTimeMax,lineTimeMil)
-		elif "PUT" in line:
-			self.processPut(line,lineTimeMin,lineTimeMax,lineTimeMil)
-			httpType = "PUT"
-		elif "DELETE" in line:
-			self.processDelete(line,lineTimeMin,lineTimeMax,lineTimeMil)
-			httpType = "DELETE"
-		'''
-		else:
-			self.processHTTPother(line,'other',lineTimeMin,lineTimeMax,lineTimeMil)
-			httpType = "other"
-		'''
-
-		#self.processTransTimes(line,'request',lineTimeMin,lineTimeMax)
-
-		'''
-		#url Split
-		url = re.findall(r'\?(.*)',line)
-		y = ''
-		for x in url:
-			y = x
-		z = y.split(" ")
-		print z[0]
-		'''
-	def processHTTPother(self,line = '',dType = 'other',lineTime='',lineTimeSec='',lineTimeMil=''):
-
-		'''
-		if "HTTP" in self.masterConfig:
-			if "OTHER" in self.masterConfig["HTTP"]:
-				if dType in self.masterConfig["HTTP"]["OTHER"]:
-					if "times" in self.masterConfig["HTTP"]["OTHER"][dType]:
-						if lineTime in self.masterConfig["HTTP"]["OTHER"][dType]["times"]:
-							self.masterConfig["HTTP"]["OTHER"][dType]["times"][lineTime]["num"] += 1
-							if "times" in self.masterConfig["HTTP"]["OTHER"][dType]["times"][lineTime]:
-								if lineTimeSec in self.masterConfig["HTTP"]["OTHER"][dType]["times"][lineTime]["times"]:
-									self.masterConfig["HTTP"]["OTHER"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-								else:
-									self.masterConfig["HTTP"]["OTHER"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-							else:
-								self.masterConfig["HTTP"]["OTHER"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-						else:
-							self.masterConfig["HTTP"]["OTHER"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-					else:
-						self.masterConfig["HTTP"]["OTHER"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-				else:
-					self.masterConfig["HTTP"]["OTHER"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
+				print(x["ws"],d)
 			else:
-				self.masterConfig["HTTP"].update({"OTHER":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
-		else:
-			self.masterConfig.update({"HTTP":{"OTHER":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
-		'''
-		self.processTransTimes(line,"OTHER",dType,"response",lineTime,lineTimeSec,lineTimeMil)
-		return True
+				self.cb.upsert(x["ws"],d)
 
-	def processHTTPplus(self,line = '',lineTime='',lineTimeMax='',lineTimeMil=''):
-		response = line.split(" --> ")
-		responseType = 'unknown'
-		responseTime = re.findall('\(.*?\)$',response[1]) #start at the end of the line.
+	def loopLog(self,wsId,startLogLine):
+		a = []
+		channelRow = 0
+		queryRow = 	0
+		since = None
+		#for x in self.logData:
+		for x in self.logData[startLogLine:]:
+			if wsId in x and "WS" not in x:
+				#b = x.rstrip('\r|\n').replace("{","").replace("}","").replace("\\","").replace('"',"").replace('/',"").decode("utf8")
+				b = x.rstrip('\r|\n').decode("utf8")
+				a.append(b)
+				if "Since:0" in x: #looks for _change since=0
+					since = "0"
+				if "GetCachedChanges(\"" in x:
+					c = self.changeCacheCount(x)
+					channelRow = channelRow + c
+				if "GetChangesInChannel(" in x:
+					d = self.changeQueryCount(x)
+					queryRow = queryRow + d
+		if queryRow == 0:
+			queryRow = None
+		return [a,since,channelRow,queryRow]
 
-		self.processTransTimes(line,"","","response",lineTime,lineTimeMax,lineTimeMil)
-		
-		if len(responseTime) != 0:
-			cleanedResponseTime = responseTime[0].replace("(","").replace(")","").split(" ")
-	
-		#trans = re.findall(r'#\d+',line)
-			#if self.debug == True:
-			#print str(trans[0]) + " :"+lineTime+' :End'
-
-
-	def processChanges(self,line='',dType='',lineTime='',lineTimeSec='',lineTimeMil=''):
+	def changeCacheCount(self,line):
+		a = line.split(" ")
 
 		if self.debug == True:
-			print("_changes")
+			print(a)
 
-		if "HTTP" in self.masterConfig:
-			if dType in self.masterConfig["HTTP"]:
-				if '_changes' in self.masterConfig["HTTP"][dType]:
-					if "times" in self.masterConfig["HTTP"][dType]["_changes"]:
-						if lineTime in self.masterConfig["HTTP"][dType]["_changes"]["times"]:
-							self.masterConfig["HTTP"][dType]["_changes"]["times"][lineTime]["num"] += 1
-							if "times" in self.masterConfig["HTTP"][dType]["_changes"]["times"][lineTime]:
-								if lineTimeSec in self.masterConfig["HTTP"][dType]["_changes"]["times"][lineTime]["times"]:
-									self.masterConfig["HTTP"][dType]["_changes"]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-								else:
-									self.masterConfig["HTTP"][dType]["_changes"]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-							else:
-								self.masterConfig["HTTP"][dType]["_changes"]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-						else:
-							self.masterConfig["HTTP"][dType]["_changes"]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-					else:
-						self.masterConfig["HTTP"][dType]["_changes"].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-				else:
-					self.masterConfig["HTTP"][dType].update({"_changes":{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
-			else:
-				self.masterConfig["HTTP"].update({dType:{"_changes":{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
+		if a[7] == "got":
+			return int(a[8])
 		else:
-			self.masterConfig.update({"HTTP":{dType:{"_changes":{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})	
-		
-		self.processTransTimes(line,dType,"_changes","request",lineTime,lineTimeSec,lineTimeMil)
-		return True
+			return int(a[7])
 
-	def processGet(self,line='',lineTime='',lineTimeSec='',lineTimeMil=''):
-
-		dType = '/'
-
-		if  "/_local/" in line:
-			dType = '_local'
-		elif "/_role" in line:
-			dType ="ADMIN:_role"
-		elif "/_config" in line:
-			dType ="ADMIN:_config"
-		elif "/_raw" in line:
-			dType ="ADMIN:_raw"
-		elif "/_user" in line:
-			dType ="ADMIN:_user"
-		elif "/_user/" in line:
-			dType ="ADMIN:_user(all)"
-		elif "/_session/" in line:
-			dType ="_session"
-		elif "/_oidc" in line:
-			dType ="AUTH:_oidc"
-		elif "/_oidc_callback" in line:
-			dType ="AUTH:_oidc_callback"
-		elif "/_oidc_challenge" in line:
-			dType ="AUTH:_oidc_challenge"
-		elif "/_oidc_refresh" in line:
-			dType ="AUTH:_oidc_refresh"
-
-		if dType == "/_changes":
-			if self.debug == True:
-				print("_changes")
-			self.processChanges(line,"GET",lineTime,lineTimeSec,lineTimeMil)
-			return True
-
+	def changeQueryCount(self,line):
+		a = line.split(" ")
 		if self.debug == True:
-			print("GET: " + dType)
+			print(a)
+		return int(a[6])
 
-		if "HTTP" in self.masterConfig:
-			if "GET" in self.masterConfig["HTTP"]:
-				if dType in self.masterConfig["HTTP"]["GET"]:
-					if "times" in self.masterConfig["HTTP"]["GET"][dType]:
-						if lineTime in self.masterConfig["HTTP"]["GET"][dType]["times"]:
-							self.masterConfig["HTTP"]["GET"][dType]["times"][lineTime]["num"] += 1
-							if "times" in self.masterConfig["HTTP"]["GET"][dType]["times"][lineTime]:
-								if lineTimeSec in self.masterConfig["HTTP"]["GET"][dType]["times"][lineTime]["times"]:
-									self.masterConfig["HTTP"]["GET"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-								else:
-									self.masterConfig["HTTP"]["GET"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-							else:
-								self.masterConfig["HTTP"]["GET"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-						else:
-							self.masterConfig["HTTP"]["GET"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-					else:
-						self.masterConfig["HTTP"]["GET"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-				else:
-					self.masterConfig["HTTP"]["GET"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
-			else:
-				self.masterConfig["HTTP"].update({"GET":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
-		else:
-			self.masterConfig.update({"HTTP":{"GET":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
-		
-		self.processTransTimes(line,"GET",dType,"request",lineTime,lineTimeSec,lineTimeMil)
-		return True
-
-	def processPut(self,line='',lineTime='',lineTimeSec='',lineTimeMil=''):
-
-		dType = '/'
-		
-		if  "/_local/" in line:
-			dType = "_local"
-		if  "/_bulk_get" in line:
-			dType = "_bulk_get"
-		elif "/_logging" in line:
-			dType = '_all_docs'
-		elif "/_design/" in line:
-			dType ="ADMIN:_role"
-		elif "/_role/" in line:
-			dType ="ADMIN:_role"
-		elif "/_config" in line:
-			dType ="ADMIN:_config"
-		elif "/_user/" in line:
-			dType ="ADMIN:_user"
-
-		if "HTTP" in self.masterConfig:
-			if "PUT" in self.masterConfig["HTTP"]:
-				if dType in self.masterConfig["HTTP"]["PUT"]:
-					if "times" in self.masterConfig["HTTP"]["PUT"][dType]:
-						if lineTime in self.masterConfig["HTTP"]["PUT"][dType]["times"]:
-							self.masterConfig["HTTP"]["PUT"][dType]["times"][lineTime]["num"] += 1
-							if "times" in self.masterConfig["HTTP"]["PUT"][dType]["times"][lineTime]:
-								if lineTimeSec in self.masterConfig["HTTP"]["PUT"][dType]["times"][lineTime]["times"]:
-									self.masterConfig["HTTP"]["PUT"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-								else:
-									self.masterConfig["HTTP"]["PUT"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-							else:
-								self.masterConfig["HTTP"]["PUT"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-						else:
-							self.masterConfig["HTTP"]["PUT"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-					else:
-						self.masterConfig["HTTP"]["PUT"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-				else:
-					self.masterConfig["HTTP"]["PUT"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
-			else:
-				self.masterConfig["HTTP"].update({"PUT":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
-		else:
-			self.masterConfig.update({"HTTP":{"PUT":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
-		
-		self.processTransTimes(line,"PUT",dType,"request",lineTime,lineTimeSec,lineTimeMil)
-		return True	
-
-	def processPost(self,line='',lineTime='',lineTimeSec='',lineTimeMil=''):
-
-		dType = '/'
-
-		if "/_bulk_docs" in line:
-			dType ="_bulk_docs"
-		elif "/_bulk_get" in line:
-			dType ="_bulk_get"
-		elif "/_all_docs" in line:
-			dType ="_all_docs"
-		elif "/_changes" in line:
-			dType ="_changes"
-		elif "/_compact" in line:
-			dType ="ADMIN:_compact"
-		elif "/_offline" in line:
-			dType ="ADMIN:_offline"
-		elif "/_online" in line:
-			dType ="ADMIN:_online"
-		elif "/_resync" in line:
-			dType ="ADMIN:_resync"		
-		elif "/_role" in line:
-			dType ="ADMIN:_role"
-		elif "/_logging" in line:
-			dType ="ADMIN:_logging"
-		elif "/_replicate" in line:
-			dType ="ADMIN:_replicate"
-		elif "/_purge" in line:
-			dType ="ADMIN:_purge"
-		elif "/_config" in line:
-			dType ="ADMIN:_config"
-		elif "/_raw" in line:
-			dType ="ADMIN:_raw"
-		elif "/_revs_diff" in line:
-			dType ="_revs_diff"
-		elif "/_user" in line:
-			dType ="ADMIN:_user"
-		elif "/_session" in line:
-			dType ="ADMIN:_session"
-
-		#processing _changes
-		if dType == "_changes":
-			if self.debug == True:
-					print("_changes")
-			self.processChanges(line,"POST",lineTime,lineTimeSec,lineTimeMil)
-			return True
-
-		if "HTTP" in self.masterConfig:
-			if "POST" in self.masterConfig["HTTP"]:
-				if dType in self.masterConfig["HTTP"]["POST"]:
-					if "times" in self.masterConfig["HTTP"]["POST"][dType]:
-						if lineTime in self.masterConfig["HTTP"]["POST"][dType]["times"]:
-							self.masterConfig["HTTP"]["POST"][dType]["times"][lineTime]["num"] += 1
-							if "times" in self.masterConfig["HTTP"]["POST"][dType]["times"][lineTime]:
-								if lineTimeSec in self.masterConfig["HTTP"]["POST"][dType]["times"][lineTime]["times"]:
-									self.masterConfig["HTTP"]["POST"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-								else:
-									self.masterConfig["HTTP"]["POST"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-							else:
-								self.masterConfig["HTTP"]["POST"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-						else:
-							self.masterConfig["HTTP"]["POST"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-					else:
-						self.masterConfig["HTTP"]["POST"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-				else:
-					self.masterConfig["HTTP"]["POST"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
-			else:
-				self.masterConfig["HTTP"].update({"POST":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
-		else:
-			self.masterConfig.update({"HTTP":{"POST":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
-		
-		self.processTransTimes(line,"POST",dType,"request",lineTime,lineTimeSec,lineTimeMil)
-		return True	
-
-	def processDelete(self,line='',lineTime='',lineTimeSec='',lineTimeMil=''):
-
-			dType = '/'
-
-			if "/_local/" in line:
-				dType ="_local"
-			elif "/_role/" in line:
-				dType ="ADMIN:_role"
-			elif "/_design/" in line:
-				dType ="ADMIN:_design"
-			elif "/_user/" in line:
-				dType ="ADMIN:_user"
-			elif "/_session/" in line:
-				dType ="ADMIN:_session"
-			
-			
-			if "HTTP" in self.masterConfig:
-				if "DELETE" in self.masterConfig["HTTP"]:
-					if dType in self.masterConfig["HTTP"]["DELETE"]:
-						if "times" in self.masterConfig["HTTP"]["DELETE"][dType]:
-							if lineTime in self.masterConfig["HTTP"]["DELETE"][dType]["times"]:
-								self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime]["num"] += 1
-								if "times" in self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime]:
-									if lineTimeSec in self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime]["times"]:
-										self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-									else:
-										self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-								else:
-									self.masterConfig["HTTP"]["DELETE"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-							else:
-								self.masterConfig["HTTP"]["DELETE"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-						else:
-							self.masterConfig["HTTP"]["DELETE"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-					else:
-						self.masterConfig["HTTP"]["DELETE"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
-				else:
-					self.masterConfig["HTTP"].update({"DELETE":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
-			else:
-				self.masterConfig.update({"HTTP":{"DELETE":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
-			
-
-			self.processTransTimes(line,"DELETE",dType,"request",lineTime,lineTimeSec,lineTimeMil)
-			return True	
-
-	def processSync(self,line = '',lineTime='',lineTimeMax='',lineTimeMil=''):
-		response = line.split(" --> ")
-		responseType = 'unknown'
-		responseTime = re.findall('\(.*?\)$',response[1]) #start at the end of the line.
-
-		self.processTransTimes(line,"","","response",lineTime,lineTimeMax,lineTimeMil)
-		
-		if len(responseTime) != 0:
-			cleanedResponseTime = responseTime[0].replace("(","").replace(")","").split(" ")
-	
-		#trans = re.findall(r'#\d+',line)
-			#if self.debug == True:
-			#print str(trans[0]) + " :"+lineTime+' :End'
-
-	def processSync(self,line='',lineTime='',lineTimeSec='',lineTimeMil=''):
-
-			dType = 'Sync'
-
-			print("Its Hitting the Sync")
-
-			'''
-			if "/_local/" in line:
-				dType ="_local"
-			elif "/_role/" in line:
-				dType ="ADMIN:_role"
-			elif "/_design/" in line:
-				dType ="ADMIN:_design"
-			elif "/_user/" in line:
-				dType ="ADMIN:_user"
-			elif "/_session/" in line:
-				dType ="ADMIN:_session"
-			'''		
-			
-			if "Sync" in self.masterConfig:
-				if "Sending" in self.masterConfig["Sync"]:
-					if dType in self.masterConfig["Sync"]["Sending"]:
-						if "times" in self.masterConfig["Sync"]["Sending"][dType]:
-							if lineTime in self.masterConfig["Sync"]["Sending"][dType]["times"]:
-								self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["num"] += 1
-								if "times" in self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]:
-									if lineTimeSec in self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["times"]:
-										self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["times"][lineTimeSec]["num"] += 1
-									else:
-										self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime]["times"].update({lineTimeSec:{"num":1}})
-								else:
-									self.masterConfig["Sync"]["Sending"][dType]["times"][lineTime].update({"times":{lineTimeSec:{"num":1}}})
-							else:
-								self.masterConfig["Sync"]["Sending"][dType]["times"].update({lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}})
-						else:
-							self.masterConfig["Sync"]["Sending"][dType].update({"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}})
-					else:
-						self.masterConfig["Sync"]["Sending"].update({dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}})
-				else:
-					self.masterConfig["Sync"].update({"Sending":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}})
-			else:
-				self.masterConfig.update({"Sync":{"Sending":{dType:{"times":{lineTime:{"num":1,"times":{lineTimeSec:{"num":1}}}}}}}})
-			
-
-			self.processTransTimes(line,"Sending",dType,"request",lineTime,lineTimeSec,lineTimeMil)
-			return True	
+	def getTimeForLineBySecond(self,line):
+		return line[0+self.sgDtLineOffset:19+self.sgDtLineOffset]
 
 
-	def processTransTimes(self,line='',rType = 'POST',rValue = '_changes',dataAsk = 'request',lineTimeMin='',lineTimeMax='',lineTimeMil=''):
+	def sgStarts(self):
+		for x in self.logData:
+			if "==== Couchbase Sync Gateway/" in x:
+				t = self.getTimeForLineBySecond(x)
+				d = {"type":"sgStart","dt":t,"tag":self.sgLogTag}
+				try:
+					self.cb.insert("sgStart::"+t,d)
+				except:
+					print("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
 
-			if(line[0:5] == "_time="):  #sg process logs puts _time= in string
-				return False
+	def dcpChecks(self):
 
-			trans = re.findall(r'#\d+',line)
+		for x in self.logData:
+			if "DCP: OnError:" in x:
+				t = self.getTimeForLineBySecond(x)
+				d = {"type":"dcpError","dt":t ,"count":1,"tag":self.sgLogTag}
 
-			if len(trans) == 0:
-				return False
+				try:
+					d = self.cb.get("dcpErorr::"+t).value
+					self.cb.mutate_in("dcpErorr::"+t, SD.upsert("count",d["count"]+1))
+				except:
+					#print("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+					self.cb.insert("dcpErorr::"+t,d)
 
-			#print dataAsk 
+	def importCheck(self):
+		return
 
-			#check if they started SG and Trans went back to #001
+	def n1qlQueryInfo(self):
+		for x in self.logData:
+			if "Query: N1QL Query" in x:
+				t = self.getTimeForLineBySecond(x)
 
-			prePendTrans = 0
-			firstTime = False
+				a = x.split(" ")
+				b = self.n1qlTimeSplit(a[6])
+				c = {"q":a[4],"t":a[6],"dt":a[0],"tChop":b,"tag":self.sgLogTag}
+				d = {"type":"query", "q":[c]}
+				try:
+					#d = self.cb.get("query::"+t).value
+					self.cb.mutate_in("query::"+t, SD.array_append('q',b))
+				except:
+					#print("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+					self.cb.insert("query::"+t,d)
 
-			if self.sgRestart["r"] == False and dataAsk == "request" and trans[0] == "#001":
-				firstTime = True
-				trans[0] = str(1) + str(trans[0])
-				self.sgRestart.update({"r":1})
+	def n1qlTimeSplit(self,qTime):
 
-			if self.sgRestart["r"] == False and dataAsk == "response" and trans[0] == "#001":
-
-				firstTime = True
-				trans[0] = str(1) + str(trans[0])
-				self.sgRestart.update({"r":1})
-
-			if self.sgRestart["r"] != False and trans[0] == "#001" and firstTime == False and self.sgRestart["r"] >= 1 and dataAsk =="request":
-				prePendTrans = str(self.sgRestart["r"] + 1)
-				trans[0] = prePendTrans + str(trans[0])
-				self.sgRestart["r"] +=1
-
-
-			if trans[0] != "#001" and firstTime == False:
-				trans[0] = str(self.sgRestart["r"])+ str(trans[0])
-
-			if self.sgRestart["r"] != False and trans[0] == "#001" and self.sgRestart["r"] >= 1 and dataAsk =="response":
-				trans[0] = str(self.sgRestart["r"]) + str(trans[0])
-
-			if self.debug == True:
-				if dataAsk == 'request':
-					print(str(trans[0])  + " :"+lineTimeMil+' :Start')
-				else:
-					print(str(trans[0])  + " :"+lineTimeMil+' :End')
+		d = {"m":0,"s":0,"ms":0}
+		if len(qTime.split("ms")) > 1:
+			d["ms"] = round(float(qTime[:-2]),1)
+		if len(qTime.split("s")) > 1 and len(qTime.split("ms")) <= 1 :
+			d["s"] = round(float(qTime[:-1]),1)
+		if len(qTime.split("m")) > 1 and len(qTime.split("ms")) <= 1 :
+			d["m"] = round(float(qTime[:-1]),2)
+		return d
 
 
-			if trans[0] in self.tempTransData:				
-				if dataAsk == 'response':
-					
-					self.tempTransData[trans[0]].update({"e":lineTimeMil})
-					
-					if self.tempTransData[trans[0]]["s"] != "":
-						
-						if self.tempTransData[trans[0]]["s"] == lineTimeMil:
-							self.tempTransData[trans[0]].update({"d":"0:00:00.000000"})
-						else:
-							#print self.tempTransData[trans[0]]["s"] +" - " + lineTimeMil
-							d1 = datetime.strptime(self.tempTransData[trans[0]]["s"],"%Y-%m-%d %H:%M:%S.%f")
-							d2 = datetime.strptime(lineTimeMil,"%Y-%m-%d %H:%M:%S.%f")
-							d3 = str(d2 - d1)[:-3]
-							#print(str(d1))
-							#print(str(d3/1000))
-							self.tempTransData[trans[0]].update({"d":d3})
-							if 'd' in self.masterConfig["HTTP"][self.tempTransData[trans[0]]["t"]][self.tempTransData[trans[0]]["v"]]["times"][self.tempTransData[trans[0]]["sec"][:-3]]["times"][self.tempTransData[trans[0]]["sec"]]:
-								#have to compare the highest one and replace if bigger
-								if self.masterConfig["HTTP"][self.tempTransData[trans[0]]["t"]][self.tempTransData[trans[0]]["v"]]["times"][self.tempTransData[trans[0]]["sec"][:-3]]["times"][self.tempTransData[trans[0]]["sec"]]["d"] < d3:
-									self.masterConfig["HTTP"][self.tempTransData[trans[0]]["t"]][self.tempTransData[trans[0]]["v"]]["times"][self.tempTransData[trans[0]]["sec"][:-3]]["times"][self.tempTransData[trans[0]]["sec"]]["d"] = d3
-							else:	
-								self.masterConfig["HTTP"][self.tempTransData[trans[0]]["t"]][self.tempTransData[trans[0]]["v"]]["times"][self.tempTransData[trans[0]]["sec"][:-3]]["times"][self.tempTransData[trans[0]]["sec"]].update({"d":d3})
-				else:
-					self.tempTransData[trans[0]].update({"s":lineTimeMil})
-			else:
-				self.tempTransData.update({trans[0]:{"t":rType,"v":rValue,"sec":lineTimeMax,"s":lineTimeMil,"e":""}}) #add in trans
-				#self.tempTransData.update({lineTimeMax:{trans[0]:{"t":rType,"v":rValue,"l":lineTimeMil,"h":lineTimeMil}}}) #add in trans
-			return True
-
-	def processTimeStamp(self,line='',linePosition = 0):
-			#timestamplong = str(line[:23])
-			tl = 23 + self.logTimeOffset
-			timestamplong = str(line[self.logTimeOffset:tl])
-		
-			if line[0:6] == "_time=": #sg-process logs put _time= in front of their timestamp
-				return False
-
-			if len(timestamplong) <= 1:
-				return False
-
-			if timestamplong[10] == "T":
-				timestamplong = re.sub("T", " ", timestamplong)
-
-			#print(str(timestamplong))
-			#exit()
-			timestamp =	timestamplong[:19]
-			timestampMinute = timestamp[:16]
-			#per minutel/second
-			if self.dotimes == True:	
-				if 'times' in self.masterConfig:
-					if timestampMinute in self.masterConfig["times"]:
-						self.masterConfig["times"][timestampMinute]["num"] += 1
-						if "times" in self.masterConfig["times"][timestampMinute]:
-							if timestamp in self.masterConfig["times"][timestampMinute]["times"]:
-								self.masterConfig["times"][timestampMinute]["times"][timestamp]["num"] += 1
-							else:
-								self.masterConfig["times"][timestampMinute]["times"].update({timestamp:{"num":1,"line":linePosition}})
-						else:
-							self.masterConfig["times"][timestampMinute]["times"].update({timestamp:{"num":1,"line":linePosition}})
-					else:
-						self.masterConfig["times"].update({timestampMinute:{"num":1,"line":linePosition,"times":{timestamp:{"num":1,"line":linePosition}}}})
-				else:
-					self.masterConfig.update({"times":{timestampMinute:{"num":1,"line":linePosition,"times":{timestamp:{"num":1,"line":linePosition}}}}})
-			return {"min":timestampMinute,"sec":timestamp,"mil":timestamplong}
-
-	def checkSGrestart(self,lineParsed=0):
-		print('yes')
 
 if __name__ == "__main__":
+
+	if len(sys.argv) > 1:
+		configFile = sys.argv[1]
+	else:
+		print("Error: No config.json file given")
+		exit()
+
+	a = work(configFile) ##bootstrap reads config.json and loads logfile into memory to read
 	
-	path = sys.argv[1]
-	a = SGLOGREADER(path)
-	a.processLog()
+	##1.HTTP Logs
+
+	##2a.WS-ID-per-user-into-cb
+	wsIdList = a.findWsId()
+	##2b.from-WS-ID-diagnose-User
+	c = a.getDataPerWsId(wsIdList)
+	##3.SG-start/restarts-counts
+	a.sgStarts()
+	
+	##4.DCP-errors-from-CB
+	a.dcpChecks()
+
+	##5.Query-times
+	a.n1qlQueryInfo()
+
+	##6.Golang-errors
+
+	##7.Imports
+	a.importCheck()
+
+	##8. SG-Replicate
+
