@@ -1,0 +1,82 @@
+QUERY:
+SELECT sg.q[0].q, sg.q[0].t , split(meta(sg).id,"::")[2] as dt,STR_TO_DURATION(sg.q[0].t) as qTime FROM `sg-log-reader`.`_default`.`_default` as sg 
+WHERE sg.`docType` = "query" AND 
+sg.q[0].dt BETWEEN "2021-03-20" AND 
+"2021-03-24" AND STR_TO_DURATION(sg.q[0].t) IS NOT MISSING AND
+STR_TO_DURATION(sg.q[0].t) >= 2000
+ORDER BY 
+STR_TO_DURATION(sg.q[0].t) DESC
+LIMIT 100
+
+INDEX:
+CREATE INDEX queryFinder_v1 ON `sg-log-reader`.`_default`.`_default`(q[0].dt,STR_TO_DURATION(q[0].t),q[0].q) WHERE `docType` = "query"
+
+
+QUERY:
+SELECT u.dt,
+       u.`user`,
+       u.`sgDb`,
+       meta(u).id as cbKey,
+       u.dtDiffSec,
+       u.cRow,
+       u.qRow,
+       u.tRow
+FROM `sg-log-reader`.`_default`.`_default` as u
+WHERE u.`docType` = "byWsId"
+    AND u.dt BETWEEN "2021-03-23" AND "2021-03-24"
+    AND u.`user` = "adg9"
+    AND u.`sgDb` = "asset360"
+ORDER BY u.dt
+
+INDEX:
+CREATE INDEX userSyncFinder_v1 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`) WHERE `docType` = "byWsId"
+
+
+QUERY:
+SELECT u.dt,
+       u.`user`,
+       u.`sgDb`,
+       meta(u).id as cbKey,
+       {u.dtDiffSec,
+       u.cRow,
+       u.qRow,
+       u.tRow}
+FROM `sg-log-reader`.`_default`.`_default` as u
+WHERE u.`docType` = "byWsId"
+    AND u.dt BETWEEN "2021-03-23" AND "2021-03-24"
+    AND u.`user` = "adg9"
+    AND u.`sgDb` = "asset360"
+ORDER BY u.dt
+
+
+CREATE INDEX userSyncFinder_v2 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`,{`dtDiffSec`,`cRow`,`qRow`,`tRow`}) WHERE `docType` = "byWsId"
+
+
+
+QUERY:
+SELECT count(u.`user`) as `userList`,
+       u.`user`
+FROM `sg-log-reader`.`_default`.`_default` as u
+WHERE u.`docType` = "byWsId"
+    AND u.dt BETWEEN "2021-03-23" AND "2021-03-24"
+    AND u.`user` IS NOT MISSING
+    AND u.`sgDb` = "asset360"
+GROUP BY u.`user`
+ORDER BY `userList` DESC
+
+INDEX:
+CREATE INDEX userSyncFinder_v1 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`) WHERE `docType` = "byWsId"
+
+
+
+
+SELECT count(u.`sgDb`) as `sgDbList`,
+       u.`sgDb`
+FROM `sg-log-reader`.`_default`.`_default` as u
+WHERE u.`docType` = "byWsId"
+    AND u.dt BETWEEN "2021-03-20" AND "2021-03-24"
+    AND u.`user` IS NOT MISSING
+    AND u.`sgDb` IS NOT MISSING
+GROUP BY u.`sgDb`
+ORDER BY `sgDbList` DESC
+CREATE INDEX userSyncFinder_v1 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`) WHERE `docType` = "byWsId"

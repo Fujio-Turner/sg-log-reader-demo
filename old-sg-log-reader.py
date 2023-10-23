@@ -9,7 +9,7 @@ from datetime import datetime
 class SGLOGREADER():
 
 	file = ''
-	debug = True
+	debug = False
 	dotimes = False
 	dotrans = False
 	sgRestart = {"r":False}
@@ -195,7 +195,7 @@ class SGLOGREADER():
 		elif "/_blipsync" in line:
 			dType ="blip_ws"
 
-		if dType == "/_changes":
+		if dType == "/_changes" or "/_changes" in line:
 			if self.debug == True:
 				print("_changes")
 			self.processChanges(line,"GET",lineTime,lineTimeSec,lineTimeMil)

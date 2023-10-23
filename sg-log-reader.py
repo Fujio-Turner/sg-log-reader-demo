@@ -1,15 +1,25 @@
-#!/usr/bin/python
 import sys
-sys.path.insert(0, r'/usr/local/lib/python2.7/site-packages/')
-
 import json
+from datetime import timedelta
+from icecream import ic
+
+import traceback
+
+# needed for any cluster connection
+from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
-from couchbase.cluster import PasswordAuthenticator
 import couchbase.subdocument as SD
+# needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
+from couchbase.options import (ClusterOptions, ClusterTimeoutOptions, QueryOptions)
+from couchbase.exceptions import CouchbaseException
+from couchbase.exceptions import DocumentNotFoundException
+
 import re
 import datetime
 import time 
 import uuid
+
+ic.disable()
 
 class work():
 
@@ -18,14 +28,18 @@ class work():
 	sgLogName = "sg_debug.log"
 	cbHost = "127.0.0.1"
 	cbUser = "Administrator"
-	cbPass = "password"
-	cbBucket = "bucket"
+	cbPass = "fujiofujio"
+	cbBucketName = "sg-log-reader"
+	cbScopeName = "_default"
+	cbCollectionName = "_default"
+	cbColl = None
 	logData = None
 	wsIdList = {}
 	wasBlipLines = False
 	oldWsDic = {}
 	sgDtLineOffset = 0
 	sgLogTag = "default"
+
 	
 	def __init__(self,file):
 		self.readConfigFile(file)
@@ -33,13 +47,16 @@ class work():
 		self.openSgLogFile()
 
 	def makeCB(self):
-		cluster = Cluster('couchbase://'+self.cbHost)
-		authenticator = PasswordAuthenticator(self.cbUser, self.cbPass)
-		cluster.authenticate(authenticator)
 		try:
-			self.cb = cluster.open_bucket(self.cbBucket)
+			auth = PasswordAuthenticator(self.cbUser, self.cbPass)
+			cluster = Cluster('couchbase://'+self.cbHost, ClusterOptions(auth))
+			cluster.wait_until_ready(timedelta(seconds=5))
+
+			self.cb = cluster.bucket(self.cbBucketName)
+			#self.cbColl = self.cb.scope(self.cbScopeName).collection(self.cbCollectionName)
+			self.cbColl = self.cb.default_collection()
 		except:
-			print("Error: Could not connect to CB Cluster: " , self.cbHost ," as: ",self.cbUser )
+			ic("Error: Could not connect to CB Cluster: " , self.cbHost ," as: ",self.cbUser )
 			exit()
 
 	def diffdates(self,d1, d2):
@@ -49,7 +66,7 @@ class work():
 		a = open(configFile, "rb" )
 		
 		if self.debug == True:
-			print(a.read())
+			ic(a.read())
 
 		b = json.loads(a.read())
 		self.sgLogName = b["file-to-parse"]
@@ -67,7 +84,9 @@ class work():
 		a = open(self.sgLogName, "r")
 		index = 0
 		for x in a:
-			line = x.rstrip('\r|\n').decode("utf8")
+			ic(x)
+			#line = x.rstrip('\r|\n').decode("utf8")
+			line = x.rstrip('\r|\n')
 			bigOne.append(line)
 			self.importCheck(line)
 			self.n1qlQueryInfo(line)
@@ -75,17 +94,17 @@ class work():
 			self.dcpChecks(line)
 			self.sgStarts(line)
 			if self.wasBlipLines == True:
-				#print(line)
+				ic(line)
 				self.findWsId(line,index)
 
 			self.findBlipLine(line,index)
 			index +=1
 		a.close()
-		#print(self.wsIdList)
+		ic(self.wsIdList)
 		self.logData = bigOne
 		self.getDataPerWsId()
 		if self.debug == True:
-			print(self.logData)
+			ic(self.logData)
 
 	def findBlipLine(self,x,lineNumb):
 		if "/_blip" in x: 
@@ -135,15 +154,19 @@ class work():
 	def getUserNameBlip(self,line):
 		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
 		c = line.split(" ")
-		if c[15] != "":
-			d = c[15].rstrip('.')
-			return d.split(":")[1]
-		if c[16] != "":
+
+		if len(c) == 20:
 			return c[16].rstrip(')')
+		else:
+			if c[15] != "":
+				d = c[15].rstrip('.')
+				return d.split(":")[1]
+			if c[16] != "":
+				return c[16].rstrip(')')
 
 	def getDataPerWsId(self):
 		sinceList = []
-		#print(wsList)
+		ic(self.wsIdList)
 		for key, x in self.wsIdList.items():
 		#for x in self.wsIdList:
 			if x["auth"] == True:
@@ -163,7 +186,7 @@ class work():
 				else:
 					df = None
 				d = {
-					"type":"byWsId",
+					"docType":"byWsId",
 					"user":x["user"],
 					"dt":tf[0],
 					"dtEnd":tl[0],
@@ -183,7 +206,7 @@ class work():
 			else:
 				w = str(uuid.uuid1())
 				d = {
-				"type":"byWsId",
+				"docType":"byWsId",
 				"user":x["user"],
 				"sgDb":x["sgDb"],
 				"dt":x["dt"],
@@ -192,11 +215,16 @@ class work():
 				}
 
 			sinceList = []
+			
 			if self.debug == True:
-				print(x,d)
+				ic(x,d)
 			else:
-				self.cb.upsert(w,d)
-
+				try:
+					self.cbColl.upsert(w,d)
+				except CouchbaseException:
+					ic(traceback.format_exc())
+					ic("Error: Update of Key: "+w)
+				
 	def loopLog(self,wsId,startLogLine,sinceList):
 		a = []
 		channelRow = 0
@@ -238,7 +266,7 @@ class work():
 	def changeCacheCount(self,line):
 		a = line.split(" ")
 		if self.debug == True:
-			print(a)
+			ic(a)
 
 		if a[7] == "got":
 			return int(a[8])
@@ -248,7 +276,7 @@ class work():
 	def changeQueryCount(self,line):
 		a = line.split(" ")
 		if self.debug == True:
-			print(a)
+			ic(a)
 		return int(a[6])
 
 	def getTimeFromLine(self,line):
@@ -257,53 +285,94 @@ class work():
 	def sgStarts(self,x):
 		if "==== Couchbase Sync Gateway/" in x:
 			t = self.getTimeFromLine(x)
-			d = {"type":"sgStart","dt":t[0],"tag":self.sgLogTag}
+			d = {"docType":"sgStart","dt":t[0],"tag":self.sgLogTag}
 			try:
-				self.cb.upsert(self.sgLogTag+"::sgStart::"+t[0],d)
-			except:
-				print("Error: Update of Key: ",self.sgLogTag+"::sgStart::"+t[0])
+				self.cbColl.upsert(self.sgLogTag+"::sgStart::"+t[0],d)
+			except CouchbaseException:
+				ic(traceback.format_exc())
+				ic("Error: Update of Key: ",self.sgLogTag+"::sgStart::"+t[0])
 
 	def dcpChecks(self,x):
 		if "DCP: OnError:" in x:
 			t = self.getTimeFromLine(x)
-			d = {"type":"dcpError","dt":t[0] ,"count":1,"tag":self.sgLogTag}
+			d = {"docType":"dcpError","dt":t[0] ,"count":1,"tag":self.sgLogTag}
 
 			try:
-				d = self.cb.get(self.sgLogTag+"::dcpErorr::"+t[0]).value
-				self.cb.mutate_in(self.sgLogTag+"::dcpErorr::"+t[0], SD.upsert("count",d["count"]+1))
-			except:
-				#print("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
-				self.cb.insert(self.sgLogTag+"::dcpErorr::"+t[0],d)
+				d = self.cbColl.get(self.sgLogTag+"::dcpErorr::"+t[0]).value
+				self.cbColl.mutate_in(self.sgLogTag+"::dcpErorr::"+t[0], SD.upsert("count",d["count"]+1))
+			except CouchbaseException:
+				ic(traceback.format_exc())
+				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+				self.cbColl.insert(self.sgLogTag+"::dcpErorr::"+t[0],d)
 
 	def importCheck(self,x):
 		if " Import" in x:
 			t = self.getTimeFromLine(x)
 			if "error during importDoc" in x:
-				#print(t[0],x)
+				ic(t[0],x)
 				return
 
 	def n1qlQueryInfo(self,x):
+
 		if "Query: N1QL Query" in x:
+
 			t = self.getTimeFromLine(x)
 			a = x.split(" ")
 			b = self.n1qlTimeSplit(a[6])
 			c = {"q":a[4],"t":a[6],"dt":t[0],"tChop":b,"tag":self.sgLogTag}
-			d = {"type":"query", "q":[c]}
-			try:
-				#d = self.cb.get("query::"+t).value
-				self.cb.mutate_in(self.sgLogTag+"::query::"+t[0], SD.array_append('q',b))
-			except:
-				#print("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
-				self.cb.insert(self.sgLogTag+"::query::"+t[0],d)
+			d = {"docType":"query", "q":[c]}
 
+			ic(b)
+			try:
+				#d = self.cbColl.get(self.sgLogTag+"::query::"+t[0]).value
+				t = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
+			except DocumentNotFoundException:
+				r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
+				ic(r)
+			except CouchbaseException:
+				ic(traceback.format_exc())
+				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+
+
+		if "Channel query" in x:
+
+			t = self.getTimeFromLine(x)
+			a = x.split(" ")			
+			b = self.n1qlTimeSplit(a[5])
+			c = {"q":a[3],"t":int(a[8]),"chan":a[12],"dt":t[0],"st":a[14],"end":a[16],"tChop":b,"tag":self.sgLogTag}
+			d = {"docType":"query", "q":[c]}
+			
+			try:
+				#d = self.cbColl.get(self.sgLogTag+"::query::"+t[0]).value
+				t = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
+			except DocumentNotFoundException:
+					r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
+					ic(r)
+			except CouchbaseException:
+				ic(traceback.format_exc())
+				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+						
 	def n1qlTimeSplit(self,qTime):
 		d = {"m":0,"s":0,"ms":0}
 		if len(qTime.split("ms")) > 1:
 			d["ms"] = round(float(qTime[:-2]),1)
+
 		if len(qTime.split("s")) > 1 and len(qTime.split("ms")) <= 1 :
-			d["s"] = round(float(qTime[:-1]),1)
+			
+			if "m" in qTime[:-1]:
+				e = qTime[:-1]
+				f = e.split("m")
+				d["s"] = round(float(f[1]),1)
+			else:
+				d["s"] = round(float(qTime[:-1]),1)
+
 		if len(qTime.split("m")) > 1 and len(qTime.split("ms")) <= 1 :
-			d["m"] = round(float(qTime[:-1]),2)
+
+			if len(qTime[0]) > 0:
+				d["m"] = round(float(qTime[0]),2)
+			else:
+				d["m"] = round(float(qTime[:-1]),2)
+			
 		return d
 
 	def replicateCheck(self,x):
@@ -326,12 +395,13 @@ class work():
 						if chkPt[1] == 1:
 							b[id1]["setChk"] += 1
 				else:
-					b.update({id1:{"repId":str(a[1]),"type":"replicate","since":since,"getChk":0,"setChk":0,"error":0,"dt":t[0],"tag":self.sgLogTag}})
+					b.update({id1:{"repId":str(a[1]),"docType":"replicate","since":since,"getChk":0,"setChk":0,"error":0,"dt":t[0],"tag":self.sgLogTag}})
 		for y in b:
 			try:
-				self.cb.upsert(y,b[y])
-			except:
-				print("Error: Upsert Key:",y)
+				self.cbColl.upsert(y,b[y])
+			except CouchbaseException:
+				ic(traceback.format_exc())
+				ic("Error: Upsert Key:",y)
 
 	def replicatorId(self,line):
 		return re.findall(r"\[([A-Za-z0-9_-]+)\]",line)
@@ -358,14 +428,14 @@ class work():
 
 	def replicateError(self,line,replicatorName):
 		if replicatorName in line.lower():
-			print(line)
+			ic(line)
 
 if __name__ == "__main__":
 
 	if len(sys.argv) > 1:
 		configFile = sys.argv[1]
 	else:
-		print("Error: No config.json file given")
+		ic("Error: No config.json file given")
 		exit()
 
 	a = work(configFile) ##bootstrap reads config.json and loads logfile into memory to read
