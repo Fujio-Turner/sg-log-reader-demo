@@ -16,11 +16,7 @@ QUERY:
 SELECT u.dt,
        u.`user`,
        u.`sgDb`,
-       meta(u).id as cbKey,
-       u.dtDiffSec,
-       u.cRow,
-       u.qRow,
-       u.tRow
+       meta(u).id as cbKey
 FROM `sg-log-reader`.`_default`.`_default` as u
 WHERE u.`docType` = "byWsId"
     AND u.dt BETWEEN "2021-03-23" AND "2021-03-24"

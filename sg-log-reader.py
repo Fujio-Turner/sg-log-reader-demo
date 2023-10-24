@@ -5,11 +5,9 @@ from icecream import ic
 
 import traceback
 
-# needed for any cluster connection
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 import couchbase.subdocument as SD
-# needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
 from couchbase.options import (ClusterOptions, ClusterTimeoutOptions, QueryOptions)
 from couchbase.exceptions import CouchbaseException
 from couchbase.exceptions import DocumentNotFoundException
@@ -18,8 +16,6 @@ import re
 import datetime
 import time 
 import uuid
-
-ic.disable()
 
 class work():
 
@@ -40,9 +36,9 @@ class work():
 	sgDtLineOffset = 0
 	sgLogTag = "default"
 
-	
 	def __init__(self,file):
 		self.readConfigFile(file)
+		self.debugIceCream()
 		self.makeCB()
 		self.openSgLogFile()
 
@@ -61,6 +57,12 @@ class work():
 
 	def diffdates(self,d1, d2):
 		return (time.mktime(time.strptime(d2,"%Y-%m-%dT%H:%M:%S")) - time.mktime(time.strptime(d1, "%Y-%m-%dT%H:%M:%S")))
+
+	def debugIceCream(self):
+		if self.debug == True:
+			ic.enable();
+		else:
+			ic.disable()
 
 	def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
@@ -193,13 +195,17 @@ class work():
 					"dtDiffSec":df,
 					"sgDb":x["sgDb"],
 					"since":sinceList,
+					"continuous":r[8],
+					"conflicts":r[9],
+					"errors":r[10],
+					"warnings":r[11],
 					"cRow":r[2],
 					"qRow":r[3],
 					"tRow":tRow,
-					"filterBy":r[4],
+					"filterBy":r[5],
 					"logTag":self.sgLogTag,
-					"blipC":r[5],
-					"blipO":r[6],
+					"blipC":r[6],
+					"blipO":r[7],
 					"auth":True,
 					"log":r[0]
 					}
@@ -229,11 +235,15 @@ class work():
 		a = []
 		channelRow = 0
 		queryRow = 	0
+		conflictCount = 0
+		errorCount = 0
+		warningCount = 0
 		since = None
 		filterBy = False
 		blipClosed = False
 		blipOpened = False
 		filterByChannels = []
+		continuous = None
 		#for x in self.logData:
 		for x in self.logData[startLogLine:]:
 			if wsId in x and "WS" not in x:
@@ -241,27 +251,40 @@ class work():
 				b = x.rstrip('\r|\n')
 				a.append(b)
 
-				if "Since:" in x:
+				if "Since:" in x and "SyncMsg:" in x:
 					if "Since:0 " in x: #looks for _change since=0
 						since = "0"
 					else:
-						sinceLong = x.split("Since:")[1]
-						since = sinceLong.split(" ")[0]
+						#sinceLong = x.split("Since:")[1]
+						#since = sinceLong.split(" ")[0]
+						since = self.findSince(x)
 				if "GetCachedChanges(\"" in x:
 					c = self.changeCacheCount(x)
 					channelRow = channelRow + c
 				if "GetChangesInChannel(" in x:
 					d = self.changeQueryCount(x)
 					queryRow = queryRow + d
-
+				if " Continuous:" in x and " SyncMsg:" in x:
+					continuous = self.findContinuous(x)
 				if "BLIP+WebSocket connection closed" in x:
 					blipClosed = True
 				if "Upgraded to BLIP+WebSocket protocol" in x:
 					blipOpened = True
+				if "Filter:sync_gateway/bychannel " in x:
+					filterBy = True
+					filterByChannels = self.findChannelsList(x)
+				if " 409 Document update conflict " in x:
+					conflictCount = conflictCount + 1
+				if "[ERR] c:[" in x:
+					errorCount = errorCount + 1
+				if "[WRN] c:[" in x:
+					warningCount = warningCount + 1
+
+
 
 		##if queryRow == 0:
 		##	queryRow = None
-		return [a,since,channelRow,queryRow,filterBy,blipClosed,blipOpened]
+		return [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount]
 
 	def changeCacheCount(self,line):
 		a = line.split(" ")
@@ -408,13 +431,41 @@ class work():
 
 
 	def findSince(self,line):
-		if "since" in line:
+		"""
+			if "since" in line:
 			b = line.split("&since=")
 			#c = re.findall(r"\since=([0-9_:]+)\&", line)
 			if len(b) > 1:
 				return b[1].split("&")[0]
 			else:
 				return None
+		"""
+		pattern = r'Since:(\S+)'
+		match = re.search(pattern, line)
+		if match:
+			return match.group(1)
+		else:
+			return ""
+			
+	def findContinuous(self,line):
+		continuous_str = None
+		for substr in line.split():
+			if substr.startswith('Continuous:'):
+				continuous_str = substr.split(':')[1]
+				break
+		if continuous_str:
+			if continuous_str.lower() == 'true':
+				return True
+			elif continuous_str.lower() == 'false':
+				return False
+		else:
+			return None
+
+	
+	def findChannelsList(self,line):
+		channels = line.split('Channels:')[1].split(',')
+		channels =[channel.split('/')[-1].strip() for channel in channels]
+		return channels
 
 	def findCheckPts(self,line):
 		a = []
@@ -435,7 +486,7 @@ if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		configFile = sys.argv[1]
 	else:
-		ic("Error: No config.json file given")
+		print("Error: No config.json file given")
 		exit()
 
 	a = work(configFile) ##bootstrap reads config.json and loads logfile into memory to read
@@ -462,4 +513,3 @@ if __name__ == "__main__":
 	##a.importCheck()
 	##8. SG-Replicate
 	#a.replicateCheck()
-

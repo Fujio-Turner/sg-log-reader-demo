@@ -1,14 +1,30 @@
 # sg-log-reader-demo
 
-Tired of combing through Sync Gateway logs? .... OUCH!
+Version 2.0
 
-Trying to find the _changes that is just too slow?  ... Yes sir e
+Couchbase Mobile 2.x and greater now communicates via WebSockets.
 
-Just use the new and improved SG-LOG-READER and parse through those pesky logs lickety split.
+This means its easier to track a mobile users replication to see "Why is sync is slow?" or "Why is it not syncing?"
+
+The sg-log-reader tool take your SG log file parses it and puts it into a Couchbase Server bucket to query from.
+
+You just need to:
+ 1. pick a sg_info.log for the python script to process.
+ 2. Have acccess to a CB Cluster for the script to insert data into.
+ 3. Open up the included index.html and pick a Begin and End Date to query
+
+ It will:
+   Output all the Sync Gateway database
+   Output a list of names of all device users.
+   Output a graph of all the synced that happen from the: Begin & Date you picked.
+   You can pick a specific user to drill down to.
+   you can pick a specific sync for a specific user.
 
 
-
-<img src="img/sg-log-graph-sample.png" width="75%">
+Requirements:
+Couchbase Bucket called: `sg-log-reader`.`_default`.`_default`
+Couchbase Cluster With Index and Query Service
+Web Browser
 
 
 **HOW TO USE**
@@ -17,29 +33,8 @@ Just use the new and improved SG-LOG-READER and parse through those pesky logs l
 
 -Just run the pythen script and tell it where the sync_gateway_error.log is
 ```
-#/path/to/sg-log-reader.py /path/to/your/sync_gateway_error.log > test.json
+#python3 sg-log-reader.py config.json
 ```
--Open the test.json file and copy/paste that JSON
-
--Open index.html with a browser or start a local web server with the included index.html 
-
--Paste that JSON into the textarea box and click "Make Graph".
-
-**Timestamp log offset**
-
-Sometimes the Sync Gateway logs have additional timestamps or namespacing in front of Sync Gateway's own time stamp in the log. 
-
-EXAMPLE BELOW
-
-`16:11:47.050535 2017-11-09T16:11:47.050-06:00` 
-
-In the above `16:11:47.050535` is not needed, but `2017-11-09T16:11:47.050` is needed.
-So to get the Sync Gateway created timestamp you can set a offset to get to `2017-11-09T16:11:47.050`.
-```
-logTimeOffset = 0  to logTimeOffset = 16
-```
-You have to change it in the python file itself sg-log-reader.py on line 15.
-
 
 **FAQ**
 
@@ -48,10 +43,16 @@ You have to change it in the python file itself sg-log-reader.py on line 15.
 
 **A:**
 
--Python 2.6+ installed 
+-Python 3.6+ installed 
 
--Local Web Server ,example [MAMP](https://www.mamp.info/en/) , for the index.html file or open index.html with a browser.
+-Have a Couchbase Server with Data , Index & Query
 
 
+**Q:** Is there any configuration to the script?
+
+
+**A:**
+
+Yes, there is a config.json file that you can update with things like creditals to a Couchbase bucket
 
 #Works on My Computer Tested & Certified ;-)
