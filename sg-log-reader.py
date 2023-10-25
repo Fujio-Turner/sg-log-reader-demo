@@ -281,7 +281,6 @@ class work():
 					warningCount = warningCount + 1
 
 
-
 		##if queryRow == 0:
 		##	queryRow = None
 		return [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount]
@@ -321,8 +320,10 @@ class work():
 			d = {"docType":"dcpError","dt":t[0] ,"count":1,"tag":self.sgLogTag}
 
 			try:
-				d = self.cbColl.get(self.sgLogTag+"::dcpErorr::"+t[0]).value
 				self.cbColl.mutate_in(self.sgLogTag+"::dcpErorr::"+t[0], SD.upsert("count",d["count"]+1))
+			except DocumentNotFoundException:
+				r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
+				ic(r)
 			except CouchbaseException:
 				ic(traceback.format_exc())
 				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")

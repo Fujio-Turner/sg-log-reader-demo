@@ -60,6 +60,8 @@ WHERE u.`docType` = "byWsId"
 GROUP BY u.`user`
 ORDER BY `userList` DESC
 
+ AND u.dt BETWEEN "2022-01-21T18:02:55" AND "2022-01-21T18:03:00"
+
 INDEX:
 CREATE INDEX userSyncFinder_v1 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`) WHERE `docType` = "byWsId"
 
@@ -75,4 +77,7 @@ WHERE u.`docType` = "byWsId"
     AND u.`sgDb` IS NOT MISSING
 GROUP BY u.`sgDb`
 ORDER BY `sgDbList` DESC
+
+ AND u.dt BETWEEN "2022-01-21T18:02:55" AND "2022-01-21T18:03:00"
+
 CREATE INDEX userSyncFinder_v1 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`) WHERE `docType` = "byWsId"

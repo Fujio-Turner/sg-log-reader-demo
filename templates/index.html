@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Sync Gateway Log Reader GUI</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/daterangepicker.css') }}">
+<style>
+canvas {
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+
+.intInput{
+  width: 80px;
+}
+
+.search{
+
+  width: 150px;
+}
+
+.sgList {
+  overflow: scroll;
+}
+
+#sgDbList{
+  height: 100px;
+  width: 200px;
+}
+
+#sgUserList{
+  height: 400px;
+  width: 200px;
+}
+
+.sgListData
+{
+width: 160px;
+padding: 10px;
+border: 2px solid #9294f6;
+border-radius: 15px;
+-moz-border-radius: 15px;
+}
+
+
+
+</style>
+</head>
+<body>        
+<h3>Sync Gateway Sync Details</h3>
+<div class="one" id="search">
+<input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)">
+<button id="search" class="search">Search</button>
+</div>
+<div class="one" id="datepicker">
+<input type="text" id="dtFrom" name="dtFrom" placeholder="Start Date" value="">
+</br>
+<input type="text" id="dtTo" name="dtTo" placeholder="End Date" value="">
+</div>
+
+<div class="one" id="filterBy">
+<label for="changeCount"># of Changes:</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater" >
+<label for="syncTime">Time of Sync:</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds" >
+<input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Since Zero</label> 
+<input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channel(s)</label>
+<input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
+<input type="checkbox" id="errors" name="errors" ><label for="errors">Has Errors</label>
+<button id="resetFilters" class="reset">Reset Filters</button>
+</div>
+
+<div id="chart">
+<canvas height="50%" id="myChart1" ></canvas>
+<canvas height="50%" id="myChart2"></canvas>
+</div>
+
+<div id="sgDbList" class="sgList">
+  <select id="sgDbListOptions"></select>
+</div>
+
+<div id="sgUserList" class="sgList"></div>
+
+sort by
+  <input type="radio" id="userName" name="fav_language" value="userName" checked="checked" >
+  <label for="userName">User Name</label>
+  <input type="radio" id="syncLength" name="fav_language" value="syncLength">
+  <label for="syncLength">Count</label>
+
+<div id="stats"></div>
+<div></div>
+</div>
+<div id="userSyncStats"></div></div>
+</form>
+
+<script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="{{ url_for('static', filename='assets/jquery.daterangepicker.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/notify.min.js') }}"></script>
+
+
+<script type="text/javascript">
+
+
+sgName = ""
+
+$('#dtFrom').on('input',function(e){
+
+  var from = $('#dtFrom').val();
+    var to = $('#dtTo').val();
+    if(from === "" || to === ""){
+      $.notify("Pick a Date Range");
+      return;
+    }
+    if(sgName === ""){
+      sgDbListGet();
+    }
+});
+
+
+$('#dtTo').on('input',function(e){
+
+   var from = $('#dtFrom').val();
+    var to = $('#dtTo').val();
+    if(from === "" || to === ""){
+      $.notify("Pick a Date Range");
+      return;
+    }
+
+    if(sgName === ""){
+      sgDbListGet();
+    }
+});
+
+
+$('#sgDbListOptions').on('input',function(e){
+  sgName = $('#sgDbListOptions').val();
+});
+
+
+
+
+$(document).ready(function(){
+
+
+dtConfig = {
+  format:'YYYY-MM-DDTHH:mm:ss',
+  time: {
+		enabled: true
+	},
+  showShortcuts: true,
+  customShortcuts: 
+	[
+  {
+			name: 'last 24hr',
+			dates : function()
+			{
+				var start = moment().day(0).toDate();
+				var end = moment().day(1).toDate();
+				return [start,end];
+			}
+		},
+		//if return an array of two dates, it will select the date range between the two dates
+		{
+			name: 'this week',
+			dates : function()
+			{
+				var start = moment().day(0).toDate();
+				var end = moment().day(6).toDate();
+				return [start,end];
+			}
+		}
+	],
+  separator : ' to ',
+	getValue: function()
+	{
+		if ($('#dtFrom').val() && $('#dtTo').val() )
+			return $('#dtFrom').val() + ' to ' + $('#dtTo').val();
+		else
+			return '';
+	},
+	setValue: function(s,s1,s2)
+	{
+		$('#dtFrom').val(s1);
+		$('#dtTo').val(s2);
+	}
+
+}
+
+
+$('#dtFrom').dateRangePicker(dtConfig);
+$('#dtTo').dateRangePicker(dtConfig);
+});
+
+
+function sgDbListGet(){
+  var data1 = {}
+  data1['startDt'] = $('#dtFrom').val();
+  data1['endDt'] = $('#dtTo').val();
+
+    $.ajax({
+      type: 'POST',
+      url: '/sgDbList',
+      data: JSON.stringify(data1),
+      dataType: 'json',
+      contentType:'application/json; charset=utf-8',
+      success: function(data2) { 
+        
+        $.each(data2, function(key, value) {       
+            if(key === 0){
+              var html = '<option value="'+value.sgDb+'" selected>'+value.sgDb+'</option>';
+              sgName = value.sgDb
+            }else{
+              var html = '<option value="'+value.sgDb+'" >'+value.sgDb+'</option>';              
+            }              
+            $("#sgDbListOptions").append(html)
+          });
+          $.notify("Find SG DBs","success");
+      }
+  });
+}
+
+
+function sgUserList(){
+  $('#sgUserList').empty()
+  var data1 = {}
+  data1["sgDb"] = $('#sgDbListOptions').val()
+  data1['startDt'] = $('#dtFrom').val();
+  data1['endDt'] = $('#dtTo').val();
+
+  $.ajax({
+    type: 'POST',
+    url: '/sgUserList',
+    data: JSON.stringify(data1),
+    dataType: 'json',
+    contentType:'application/json; charset=utf-8',
+    success: function(data2) { 
+          $.each(data2, function(key, value) {
+            //var html = '<div onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</div>'
+
+            var html = '<div class="sgListData"><a href="#sgUser=' + value.user + '"  onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</a></dv>'
+          $('#sgUserList').append(html)
+        });
+        }
+    });
+  }
+
+  function bigSearch(){
+
+    var from = $('#dtFrom').val();
+    var to = $('#dtTo').val();
+    if(from ==="" && to === ""){
+      $.notify("Pick a Date Range");
+      return
+    }
+
+    if(sgName === ""){
+      $.notify("Pick a SG DB");
+      return
+    }
+
+    var data1 = {}
+    data1["sgDb"] = $('#sgDbListOptions').val()
+    data1['startDt'] = from
+    data1['endDt'] = to
+    data1["user"] = $('#searchByUser').val()
+
+    data1["changeCount"] = $('#changeCount').val()
+    data1["syncTime"] = $('#syncTime').val()
+    data1["filterByChannels"] = $('#filterByChannels').is(":checked");
+    data1["conflicts"] = $('#conflicts').is(":checked");
+    data1["sinceZero"] = $('#sinceZero').is(":checked");
+    data1["errors"] = $('#errors').is(":checked");
+
+      $.ajax({
+        type: 'POST',
+        url: '/dateRange',
+        data: JSON.stringify(data1),
+        dataType: 'json',
+        contentType:'application/json; charset=utf-8',
+        success: function(data2) { 
+          makeChart(data2)
+        }
+    });
+}
+
+
+
+function makeChart(data){
+
+
+  if(typeof c1 !== 'undefined'){
+          c1.clear(); c1.destroy();
+        }
+  if(typeof c2 !== 'undefined'){
+          c2.clear(); 
+          c2.destroy();
+        }
+
+ const ctx1 = document.getElementById('myChart1');
+ const ctx2 = document.getElementById('myChart2');
+
+  var valuesChangesCache = [];
+  var valuesChangesQuery = [];
+  var valuesSyncTime = [];
+  var valuesErrors = [];
+  var valuesConflicts = [];
+  var labelsJ = [];
+
+
+  $.each(data, function(key, value) {       
+    valuesErrors.push(value.errors)
+    valuesChangesCache.push(value.cRow)
+    valuesChangesQuery.push(value.qRow)
+    valuesSyncTime.push(value.dtDiffSec)
+    valuesConflicts.push(value.conflicts)
+    labelsJ.push(value.dt) 
+  });
+
+  c1 = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: labelsJ,
+      datasets: [  {
+        label: 'Time of Sync (seconds)',
+        data: valuesSyncTime,
+        borderWidth: 1
+      },
+        {
+        label: 'Errors In Sync',
+        data: valuesErrors,
+        borderWidth: 1
+      },
+      {
+        label: 'Conflicts in Sync',
+        data: valuesConflicts,
+        borderWidth: 1
+      }
+    ]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+
+
+  c2 = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: labelsJ,
+      datasets: [
+      {
+        label: '# of Changes (from SG\'s Cache)',
+        data: valuesChangesCache,
+        borderWidth: 1
+      },
+      {
+        label: '# of Changes (from SQL++ Query)',
+        data: valuesChangesQuery,
+        borderWidth: 1
+      }
+    ]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          stacked: true
+        },
+        x: {
+          stacked: true
+        }
+      }
+    }
+ 
+  });
+
+}
+
+
+  $("#resetFilters").click(function(e){
+    $("#changeCount").val("");
+    $("#syncTime").val("");
+    $("#sinceZero").prop('checked', false);
+    $("#errors").prop('checked', false);
+    $("#conflicts").prop('checked', false);
+    $("#filterByChannels").slideToggle();
+  });
+
+3
+  $("#search").click(function(e){
+
+
+    sgUserList()
+    bigSearch()
+
+
+   /* 
+    $("#changeCount").val();
+    $("#syncTime").val();
+    $("#sinceZero").prop('checked', false);
+    $("#errors").prop('checked', false);
+    $("#conflicts").prop('checked', false);
+    $("#filterByChannels").slideToggle();
+    */
+  });
+
+
+function userFill(username){
+  $('#searchByUser').val(username);
+}
+
+</script>  
+
+</body>
+</html>

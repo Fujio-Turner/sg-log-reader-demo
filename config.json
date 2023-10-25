@@ -1,6 +1,6 @@
 {
 "log-name":"test-today-node-0",
-"file-to-parse":"/Users/fujio.turner/Downloads/abc/Disney/43847/SG/2022-01-21/sgcollect_info_3d4dc9e8ab56_20220121-191424/sg_info.log",	
+"file-to-parse":"sg_info.log",	
 "cb-cluster-host":"127.0.0.1",
 "cb-bucket-name":"sg-log-reader",
 "cb-bucket-user":"Administrator",
