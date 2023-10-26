@@ -67,8 +67,8 @@ class work():
 	def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
 		
-		if self.debug == True:
-			ic(a.read())
+		#if self.debug == True:
+		#	ic(a.read())
 
 		b = json.loads(a.read())
 		self.sgLogName = b["file-to-parse"]
@@ -260,9 +260,17 @@ class work():
 						since = self.findSince(x)
 				if "GetCachedChanges(\"" in x:
 					c = self.changeCacheCount(x)
+					if wsId == "6f632896":
+						print(x)
+						print(c)
+
 					channelRow = channelRow + c
 				if "GetChangesInChannel(" in x:
 					d = self.changeQueryCount(x)
+					if wsId == "6f632896":
+						print(x)
+						print(d)
+					
 					queryRow = queryRow + d
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = self.findContinuous(x)
@@ -283,7 +291,11 @@ class work():
 
 		##if queryRow == 0:
 		##	queryRow = None
-		return [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount]
+		l = [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount]
+
+		if wsId == "6f632896":
+			ic(l)
+		return l
 
 	def changeCacheCount(self,line):
 		a = line.split(" ")

@@ -21,7 +21,7 @@ from flask import Flask,render_template,request
 
 class work():
 
-	debug = False
+	debug = True
 	cb = None
 	sgLogName = "sg_debug.log"
 	cbHost = "127.0.0.1"
@@ -81,8 +81,9 @@ class work():
 			ic.disable()
 			
 	def cbWsIdGet(self,wsId):
+		ic(wsId)
 		try:
-			return self.cbColl.get(wsId).value
+			return self.cbColl.get(wsId['wsId']).value
 		except DocumentNotFoundException:
 			ic("wsId doc not found for: ",wsId)
 			return {}
@@ -116,7 +117,7 @@ class work():
 		ic(rangeData)
 		if 'sgDb' not in rangeData or not rangeData["sgDb"]:
 			return []
-		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`cRow`,`u.qRow`,`u.tRow`,u.`conflicts`,u.`errors` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
+		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
 		q = q +' AND u.dt BETWEEN $startDt AND $endDt ' 
 		q = q + " AND u.`sgDb` = $sgDb "
 		q = q + ' AND u.`user` IS NOT MISSING '
@@ -133,10 +134,10 @@ class work():
 		if rangeData["filterByChannels"] and rangeData["filterByChannels"] == True:
 			q = q + ' AND ARRAY_LENGTH(u.`filterBy`) > 0 '
 
-		if rangeData["syncTime"] and rangeData["syncTime"] == True :
+		if rangeData["syncTime"]:
 			q = q + ' AND u.`dtDiffSec` >= TONUMBER('+rangeData["syncTime"]+') '
 
-		if rangeData["changeCount"] and rangeData["changeCount"] == True:
+		if rangeData["changeCount"] :
 			q = q + ' AND u.`tRow` >= TONUMBER('+rangeData["changeCount"]+') '
 
 		if 'user' not in rangeData or not rangeData["user"]:
@@ -146,6 +147,7 @@ class work():
 
 		q = q + ' ORDER BY u.dt DESC '
 		data = []
+		ic(q)
 		try:
 			result = self.cluster.query(q, QueryOptions(named_parameters=rangeData))
 			for row in result.rows():
@@ -175,10 +177,11 @@ class work():
 		q = q + ' AND u.`sgDb` = $sgDb '
 		q = q + ' AND u.`user` IS NOT MISSING '
 		q = q + ' GROUP BY u.`user` '
-		if 'sortBy' not in rangeData or not rangeData["startDt"] or rangeData["startDt"] == "name": 
+
+		if 'sortBy' not in rangeData or not rangeData["sortBy"] or rangeData["sortBy"] == "name": 
 			q = q + ' ORDER BY u.`user` '
-		elif rangeData["startDt"] == "count":
-			q = q + ' ORDER BY `sgUserCount` DESC'
+		elif rangeData["sortBy"] == "count":
+			q = q + ' ORDER BY `sgUserCount` DESC '
 
 		ic(q)
 		data = []
@@ -193,7 +196,7 @@ class work():
 
 	def cbSgDbList(self,rangeDate):
 		return {}
-	def cbLastWsId(self,rangeDate):
+	def cbLastWsId(self):
 		return {}
 
 cb = work()
@@ -218,9 +221,14 @@ def dateRange():
 		return []
 
 
-@app.route('/wsId')
+@app.route('/wsId',methods=['POST'])
 def getWsId():
-    return 'Hello, World!'
+	if request.method == 'POST':
+		ic(request.json)
+		a = cb.cbWsIdGet(request.json)
+		return a
+	else:
+		return []
 
 @app.route('/sgDbList', methods=['POST'])
 def sgDblist():

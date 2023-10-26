@@ -18,8 +18,6 @@ canvas {
 }
 
 .search{
-
-  width: 150px;
 }
 
 .sgList {
@@ -32,8 +30,7 @@ canvas {
 }
 
 #sgUserList{
-  height: 400px;
-  width: 200px;
+  height: 300px;
 }
 
 .sgListData
@@ -45,54 +42,173 @@ border-radius: 15px;
 -moz-border-radius: 15px;
 }
 
+/* DivTable.com */
+.divTable{
+	display: table;
+	width: 100%;
+}
+.divTableRow {
+	display: table-row;
+}
+.divTableHeading {
+	background-color: #EEE;
+	display: table-header-group;
+}
+.divTableCell, .divTableHead {
+	border: 1px solid #999999;
+	display: table-cell;
+	padding: 3px 10px;
+}
+.divTableHeading {
+	background-color: #EEE;
+	display: table-header-group;
+	font-weight: bold;
+}
+.divTableFoot {
+	background-color: #EEE;
+	display: table-footer-group;
+	font-weight: bold;
+}
+.divTableBody {
+	display: table-row-group;
+}
+
+.userDetailList{
+  border-radius: 6px; 
+  border: 2px solid #d7d7d7;
+  padding:0.5em;
+  margin-bottom: 2px;
+}
+
+.userSyncStats{
+  height: 400px;
+  overflow: scroll;
+}
+
+
+
+.wsIdDetailRow {
+
+}
+
+.ws-dark {
+        background-color: #dddbdb;
+    }
+.ws-light {
+
+    }
 
 
 </style>
 </head>
 <body>        
-<h3>Sync Gateway Sync Details</h3>
-<div class="one" id="search">
-<input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)">
-<button id="search" class="search">Search</button>
-</div>
-<div class="one" id="datepicker">
-<input type="text" id="dtFrom" name="dtFrom" placeholder="Start Date" value="">
-</br>
-<input type="text" id="dtTo" name="dtTo" placeholder="End Date" value="">
-</div>
 
-<div class="one" id="filterBy">
-<label for="changeCount"># of Changes:</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater" >
-<label for="syncTime">Time of Sync:</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds" >
-<input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Since Zero</label> 
-<input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channel(s)</label>
-<input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
-<input type="checkbox" id="errors" name="errors" ><label for="errors">Has Errors</label>
-<button id="resetFilters" class="reset">Reset Filters</button>
-</div>
 
-<div id="chart">
-<canvas height="50%" id="myChart1" ></canvas>
-<canvas height="50%" id="myChart2"></canvas>
-</div>
+<div class="divTable">
+  <div class="divTableBody">
+  <div class="divTableRow">
+      <div class="divTableCell">
+        
+          <div class="one" id="datepicker">
+          <input type="text" id="dtFrom" name="dtFrom" placeholder="Start Date" value="">
+          </br>
+          <input type="text" id="dtTo" name="dtTo" placeholder="End Date" value="">
+          </div>
 
-<div id="sgDbList" class="sgList">
-  <select id="sgDbListOptions"></select>
-</div>
+      </div>
+      <div class="divTableCell">
+        
+          <div class="one" id="search">
+          <input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)">
+          <button id="search" class="search">Search</button>
+          </div>
 
-<div id="sgUserList" class="sgList"></div>
+      </div>
+  </div>
+  <div class="divTableRow">
+      <div class="divTableCell">
+        
+          <div id="sgDbList" class="sgList">
+            <select id="sgDbListOptions"></select>
+          </div>
 
-sort by
-  <input type="radio" id="userName" name="fav_language" value="userName" checked="checked" >
-  <label for="userName">User Name</label>
-  <input type="radio" id="syncLength" name="fav_language" value="syncLength">
-  <label for="syncLength">Count</label>
+      </div>
+      <div class="divTableCell">
+        
+          <div class="one" id="filterBy">
+          <label for="changeCount">Changes Feed Items(Total):</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater(INT)" >
+          <label for="syncTime">Time Connected(sec):</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds(INT)" >
+          <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Since Zero</label> 
+          <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channels</label>
+          <input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
+          <input type="checkbox" id="errors" name="errors" ><label for="errors">Has Errors</label>
+          <button id="resetFilters" class="reset">Reset Filters</button>
+          </div>
 
-<div id="stats"></div>
-<div></div>
-</div>
-<div id="userSyncStats"></div></div>
-</form>
+      </div>
+  </div>
+  <div class="divTableRow"  ">
+      <div class="divTableCell">
+
+          <div  id="sgUserList" class="sgList"></div>
+
+      </div>
+      <div class="divTableCell">
+        
+          <div id="chart1">
+            <canvas  id="myChart1"></canvas>
+          </div>
+
+      </div>
+  </div>
+  <div class="divTableRow" >
+
+      <div class="divTableCell">
+
+            Sort By:
+            <input type="radio" id="userName" name="userSort" value="name" checked="checked" >
+            <label for="userName">Name</label>
+            <input type="radio" id="userCount" name="userSort" value="count">
+            <label for="userCount">Count</label>
+
+      </div>
+      <div class="divTableCell">
+
+        <div id="chart2">
+              <canvas id="myChart2"></canvas>
+        </div>
+        
+      </div>
+  </div>
+  <div class="divTableRow">
+      <div class="divTableCell">
+        
+              &nbsp;
+
+      </div>
+      <div class="divTableCell">
+        
+              
+            <div id="stats">general Stats HERE</div>
+
+      </div>
+  </div>
+  <div class="divTableRow">
+      <div class="divTableCell">
+
+            &nbsp;
+
+      </div>
+      <div class="divTableCell">
+
+            <div class = "userSyncStats" id="userSyncStats"></div>
+
+      </div>
+  </div>
+  </div>
+  </div>
+  <!-- DivTable.com -->
+
 
 <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -103,7 +219,6 @@ sort by
 
 
 <script type="text/javascript">
-
 
 sgName = ""
 
@@ -141,10 +256,25 @@ $('#sgDbListOptions').on('input',function(e){
 });
 
 
+$('input[type=radio][name=userSort]').change(function() {
+    sgUserList()
+});
 
+  $("#resetFilters").click(function(e){
+    $("#changeCount").val("");
+    $("#syncTime").val("");
+    $("#sinceZero").prop('checked', false);
+    $("#errors").prop('checked', false);
+    $("#conflicts").prop('checked', false);
+    $("#filterByChannels").slideToggle();
+  });
+
+  $("#search").click(function(e){
+    sgUserList()
+    bigSearch()
+  });
 
 $(document).ready(function(){
-
 
 dtConfig = {
   format:'YYYY-MM-DDTHH:mm:ss',
@@ -163,7 +293,6 @@ dtConfig = {
 				return [start,end];
 			}
 		},
-		//if return an array of two dates, it will select the date range between the two dates
 		{
 			name: 'this week',
 			dates : function()
@@ -190,13 +319,14 @@ dtConfig = {
 
 }
 
-
 $('#dtFrom').dateRangePicker(dtConfig);
 $('#dtTo').dateRangePicker(dtConfig);
+
 });
 
 
 function sgDbListGet(){
+  $('#sgDbListOptions').empty()
   var data1 = {}
   data1['startDt'] = $('#dtFrom').val();
   data1['endDt'] = $('#dtTo').val();
@@ -230,6 +360,7 @@ function sgUserList(){
   data1["sgDb"] = $('#sgDbListOptions').val()
   data1['startDt'] = $('#dtFrom').val();
   data1['endDt'] = $('#dtTo').val();
+  data1['sortBy'] = $('input[name="userSort"]:checked').val();
 
   $.ajax({
     type: 'POST',
@@ -239,9 +370,7 @@ function sgUserList(){
     contentType:'application/json; charset=utf-8',
     success: function(data2) { 
           $.each(data2, function(key, value) {
-            //var html = '<div onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</div>'
-
-            var html = '<div class="sgListData"><a href="#sgUser=' + value.user + '"  onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</a></dv>'
+            var html = '<div class="sgListData"><a href="#sgUser=' + value.user + '"  onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</a></div>'
           $('#sgUserList').append(html)
         });
         }
@@ -289,6 +418,7 @@ function sgUserList(){
 
 
 
+
 function makeChart(data){
 
 
@@ -309,6 +439,11 @@ function makeChart(data){
   var valuesErrors = [];
   var valuesConflicts = [];
   var labelsJ = [];
+  var cbwsId = []
+
+  if($('#searchByUser').val() !== ""){
+    makeUserDetails(data)
+  }
 
 
   $.each(data, function(key, value) {       
@@ -325,7 +460,7 @@ function makeChart(data){
     data: {
       labels: labelsJ,
       datasets: [  {
-        label: 'Time of Sync (seconds)',
+        label: 'Time Connected(sec)',
         data: valuesSyncTime,
         borderWidth: 1
       },
@@ -357,12 +492,12 @@ function makeChart(data){
       labels: labelsJ,
       datasets: [
       {
-        label: '# of Changes (from SG\'s Cache)',
+        label: 'Changes Feed (By SG\'s Cache)',
         data: valuesChangesCache,
         borderWidth: 1
       },
       {
-        label: '# of Changes (from SQL++ Query)',
+        label: 'Changes Feed (By SQL++ Query)',
         data: valuesChangesQuery,
         borderWidth: 1
       }
@@ -385,39 +520,78 @@ function makeChart(data){
 }
 
 
-  $("#resetFilters").click(function(e){
-    $("#changeCount").val("");
-    $("#syncTime").val("");
-    $("#sinceZero").prop('checked', false);
-    $("#errors").prop('checked', false);
-    $("#conflicts").prop('checked', false);
-    $("#filterByChannels").slideToggle();
-  });
+  function makeUserDetails(data){
+    $('#userSyncStats').empty();
 
-3
-  $("#search").click(function(e){
+      $.each(data, function(key, value) {  
+        var html = '<div class="userDetailList" onclick="userSyncDetails(\''+value.cbKey+'\')" <b>'+value.dt +"</b>"
+          html = html + ' <b>wsId:</b> ' +value.cbKey;
+          html = html + ' <b>Connected Time(sec):</b> ' +value.dtDiffSec + " ";
 
+          var r = ""
+          if (value.tRow > 0){
+          r = (value.cRow/value.tRow) * 100
+          var r = r.toFixed(1)
+          }
+      
+          html = html + ' <b>Changes Feed Items(Total):</b> ' +value.tRow +'  <b>SG\'s Channel Cache Hit Ratio:</b> ' + r + "% "
 
-    sgUserList()
-    bigSearch()
-
-
-   /* 
-    $("#changeCount").val();
-    $("#syncTime").val();
-    $("#sinceZero").prop('checked', false);
-    $("#errors").prop('checked', false);
-    $("#conflicts").prop('checked', false);
-    $("#filterByChannels").slideToggle();
-    */
-  });
-
-
+          if(value.conflicts > 0){
+            html = html + ' <b>Conflicts:</b> <span style="color: orange;">' +value.conflicts+"</span>";
+          }else{
+            html = html + ' <b>Conflicts:</b> ' +value.conflicts;
+          }
+          
+          if(value.errors > 0){
+            html = html + ' <b>Errors:</b> <span style="color: red;">' +value.errors+"</span>";
+          }else{
+            html = html + ' <b>Errors:</b> ' +value.errors;
+          }
+         html = html + '</div></br><div class="wsIdDetailRow" id="wsIdDetails-'+value.cbKey+'"></div>';
+        $('#userSyncStats').append(html) ;    
+       });
+  }
+  
 function userFill(username){
   $('#searchByUser').val(username);
 }
 
-</script>  
+function userSyncDetails(wsId){
 
+  $('#wsIdDetails-'+wsId).empty();
+  data1 = {'wsId':wsId}
+
+  $.ajax({
+    type: 'POST',
+    url: '/wsId',
+    data: JSON.stringify(data1),
+    dataType: 'json',
+    contentType:'application/json; charset=utf-8',
+    success: function(data2) { 
+          console.log(data2)
+          var html = ''
+          html = html + ' <b>Connection Start:</b> '+ data2['dt']+' <b>End:</b> ' + data2["dtEnd"] + ' <b>Connection Time(sec):</b> '+ data2['dtDiffSec']+'</br>'
+          html = html + '  <b>Filtered By Channel(s):</b> ' + data2["filterBy"] + ' </br>'
+          html = html + '  <b>Since:</b> ' + data2["since"] + ' </br>'
+          html = html + wsIdMakeHtml(data2["log"])
+          $('#wsIdDetails-'+wsId).html(html)
+        }
+    });
+  }
+
+
+function wsIdMakeHtml(data){
+  var html = '<b>Raw Sync Log</b> </br>'
+  $.each(data, function(key, value) {
+
+    var c = "dark"
+    if(key % 2 == 0) {
+      c = "light"
+      }
+    html = html + '<div class="ws-'+c+'" >'+ value + '</div>'
+    });
+  return html
+}
+</script>  
 </body>
 </html>
