@@ -186,6 +186,7 @@ class work():
 				d = {
 					"docType":"byWsId",
 					"user":x["user"],
+					"dtFull":tf[1],
 					"dt":tf[0],
 					"dtEnd":tl[0],
 					"dtDiffSec":df,

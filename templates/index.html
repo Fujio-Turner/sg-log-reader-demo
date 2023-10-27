@@ -176,7 +176,7 @@ border-radius: 15px;
       <div class="divTableCell">
         
           <div id="chart1">
-            <canvas  id="myChart1"></canvas>
+            <canvas id="myChart1"></canvas>
           </div>
 
       </div>
@@ -195,7 +195,7 @@ border-radius: 15px;
       <div class="divTableCell">
 
         <div id="chart2">
-              <canvas id="myChart2"></canvas>
+              <canvas  id="myChart2"></canvas>
         </div>
         
       </div>
@@ -488,6 +488,9 @@ function makeChart(data){
   var valuesConflicts = [];
   var labelsJ = [];
   var cbwsId = []
+  var valuesSent = []
+  var valuesChangesSent = []
+  var valuesSentVsChangesSent = []
   var userSyncAllTrue = 0
   var userSyncAllFalse = 0
   var sinceZeroTrue = 0
@@ -509,6 +512,9 @@ function makeChart(data){
     valuesChangesQuery.push(value.qRow)
     valuesSyncTime.push(value.dtDiffSec)
     valuesConflicts.push(value.conflicts)
+    valuesSent.push(value.sentCount)
+    valuesChangesSent.push(value.tRow)
+    valuesSentVsChangesSent.push(value.sent/value.tRow)
     labelsJ.push(value.dt) 
 
       if(typeof value.cRow !== 'undefined'){
@@ -536,14 +542,21 @@ function makeChart(data){
     type: 'line',
     data: {
       labels: labelsJ,
-      datasets: [  {
-        label: 'Time Connected(sec)',
-        data: valuesSyncTime,
+      datasets: [  
+        
+      {
+        label: 'Docs Sent',
+        data: valuesSent,
         borderWidth: 1
-      },
-        {
+      }, 
+      {
         label: 'Errors In Sync',
         data: valuesErrors,
+        borderWidth: 1
+      },
+      {
+        label: 'Changes Sent (_changes)',
+        data: valuesChangesSent,
         borderWidth: 1
       },
       {
@@ -557,7 +570,8 @@ function makeChart(data){
       maintainAspectRatio: false,
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          type: 'logarithmic'
         }
       }
     }
@@ -572,13 +586,21 @@ function makeChart(data){
       {
         label: 'Changes Feed (By SG\'s Cache)',
         data: valuesChangesCache,
-        borderWidth: 1
+        borderWidth: 1,
+        type:'bar',
+        borderColor: '#00CF9B',
+        backgroundColor: '#00CF9B'
       },
       {
         label: 'Changes Feed (By SQL++ Query)',
         data: valuesChangesQuery,
-        borderWidth: 1
+        borderWidth: 1,
+        type: 'bar',
+        borderColor: '#cc33ff',
+        backgroundColor: '#cc33ff'
       }
+
+
     ]
     },
     options: {
@@ -705,7 +727,7 @@ function makeChart(data){
     plugins: { 
        title: {
                display: true,
-              text: 'Channel: Cache Hit VS SQL++ Query'
+              text: 'Cache Hit VS SQL++ Query for Channels'
               },
       legend: {
         position: 'top'

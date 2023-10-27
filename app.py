@@ -101,6 +101,8 @@ class work():
 		q = q + " AND u.`sgDb` = $sgDb "
 		q = q + ' AND u.`user` IS NOT MISSING '
 
+
+
 		if rangeData["syncResult"] and rangeData["syncResult"] == "full":
 			q = q + ' AND u.`sentCount` = u.`tRow` '
 
@@ -130,7 +132,7 @@ class work():
 		else:
 			q = q + ' AND u.`user` = $user '
 
-		q = q + ' ORDER BY u.dt DESC '
+		q = q + ' ORDER BY u.dt ASC '
 		data = []
 		ic(q)
 		try:
