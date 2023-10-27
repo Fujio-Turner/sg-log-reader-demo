@@ -66,10 +66,7 @@ class work():
 
 	def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
-		
-		#if self.debug == True:
-		#	ic(a.read())
-
+	
 		b = json.loads(a.read())
 		self.sgLogName = b["file-to-parse"]
 		self.cbHost = b["cb-cluster-host"]
@@ -87,7 +84,6 @@ class work():
 		index = 0
 		for x in a:
 			ic(x)
-			#line = x.rstrip('\r|\n').decode("utf8")
 			line = x.rstrip('\r|\n')
 			bigOne.append(line)
 			self.importCheck(line)
@@ -109,7 +105,7 @@ class work():
 			ic(self.logData)
 
 	def findBlipLine(self,x,lineNumb):
-		if "/_blip" in x: 
+		if "/_blipsync" in x: 
 			userN = self.getUserName(x)
 			t = self.getTimeFromLine(x)
 			httpNum = self.httpTransNum(x)
@@ -202,6 +198,7 @@ class work():
 					"cRow":r[2],
 					"qRow":r[3],
 					"tRow":tRow,
+					"sentCount":r[12],
 					"filterBy":r[5],
 					"logTag":self.sgLogTag,
 					"blipC":r[6],
@@ -238,16 +235,21 @@ class work():
 		conflictCount = 0
 		errorCount = 0
 		warningCount = 0
+		sent = 0
+		goErrors = 0
+		dcpErrors = 0
+		importErrors = 0
 		since = None
 		filterBy = False
 		blipClosed = False
 		blipOpened = False
 		filterByChannels = []
 		continuous = None
-		#for x in self.logData:
+
+
 		for x in self.logData[startLogLine:]:
 			if wsId in x and "WS" not in x:
-				#b = x.rstrip('\r|\n').replace("{","").replace("}","").replace("\\","").replace('"',"").replace('/',"").decode("utf8")
+
 				b = x.rstrip('\r|\n')
 				a.append(b)
 
@@ -255,22 +257,12 @@ class work():
 					if "Since:0 " in x: #looks for _change since=0
 						since = "0"
 					else:
-						#sinceLong = x.split("Since:")[1]
-						#since = sinceLong.split(" ")[0]
 						since = self.findSince(x)
 				if "GetCachedChanges(\"" in x:
 					c = self.changeCacheCount(x)
-					if wsId == "6f632896":
-						print(x)
-						print(c)
-
 					channelRow = channelRow + c
 				if "GetChangesInChannel(" in x:
-					d = self.changeQueryCount(x)
-					if wsId == "6f632896":
-						print(x)
-						print(d)
-					
+					d = self.changeQueryCount(x)					
 					queryRow = queryRow + d
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = self.findContinuous(x)
@@ -281,6 +273,9 @@ class work():
 				if "Filter:sync_gateway/bychannel " in x:
 					filterBy = True
 					filterByChannels = self.findChannelsList(x)
+				if " changes to client, from seq " in x:		
+					i = self.findSentCount(x)
+					sent = sent + i
 				if " 409 Document update conflict " in x:
 					conflictCount = conflictCount + 1
 				if "[ERR] c:[" in x:
@@ -288,14 +283,7 @@ class work():
 				if "[WRN] c:[" in x:
 					warningCount = warningCount + 1
 
-
-		##if queryRow == 0:
-		##	queryRow = None
-		l = [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount]
-
-		if wsId == "6f632896":
-			ic(l)
-		return l
+		return [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent]
 
 	def changeCacheCount(self,line):
 		a = line.split(" ")
@@ -348,6 +336,13 @@ class work():
 				ic(t[0],x)
 				return
 
+	def findSentCount(self,x):
+		a = x.split(" ")
+		if self.debug == True:
+			ic(a)
+			print(a[5])
+		return int(a[5])
+
 	def n1qlQueryInfo(self,x):
 
 		if "Query: N1QL Query" in x:
@@ -360,7 +355,6 @@ class work():
 
 			ic(b)
 			try:
-				#d = self.cbColl.get(self.sgLogTag+"::query::"+t[0]).value
 				t = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
 			except DocumentNotFoundException:
 				r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
@@ -379,7 +373,6 @@ class work():
 			d = {"docType":"query", "q":[c]}
 			
 			try:
-				#d = self.cbColl.get(self.sgLogTag+"::query::"+t[0]).value
 				t = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
 			except DocumentNotFoundException:
 					r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
@@ -444,15 +437,6 @@ class work():
 
 
 	def findSince(self,line):
-		"""
-			if "since" in line:
-			b = line.split("&since=")
-			#c = re.findall(r"\since=([0-9_:]+)\&", line)
-			if len(b) > 1:
-				return b[1].split("&")[0]
-			else:
-				return None
-		"""
 		pattern = r'Since:(\S+)'
 		match = re.search(pattern, line)
 		if match:
@@ -483,7 +467,6 @@ class work():
 	def findCheckPts(self,line):
 		a = []
 		if "point" in line.lower():
-			#[getCheckpoints,setCheckpoint]
 			if "stateFnActivePushCheckpoint got event: {PUSH_CHECKPOINT_SUCCEEDED" in line:
 				a = [0,1]
 			if "event: &{FETCH_CHECKPOINT_SUCCEEDED" in line:

@@ -25,7 +25,7 @@ canvas {
 }
 
 #sgDbList{
-  height: 100px;
+  height: 200px;
   width: 200px;
 }
 
@@ -98,11 +98,25 @@ border-radius: 15px;
 
     }
 
+  #chart1 {
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    height: 600px;
+  }
+
+  #chart2 {
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    height: 600px;
+  }
 
 </style>
 </head>
 <body>        
 
+ 
 
 <div class="divTable">
   <div class="divTableBody">
@@ -134,10 +148,16 @@ border-radius: 15px;
 
       </div>
       <div class="divTableCell">
-        
+       
           <div class="one" id="filterBy">
+            <label for="syncResult">Sync Result:</label>
+            <select name="syncResult" id="syncResult">
+              <option value="any" selected="selected">Any Result</option>
+              <option value="full">All Docs/Full Sync</option>
+              <option value="nonFull">Missing Docs/No Sync</option>
+            </select>
           <label for="changeCount">Changes Feed Items(Total):</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater(INT)" >
-          <label for="syncTime">Time Connected(sec):</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds(INT)" >
+          <label for="syncTime">Time Connected (sec):</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds(INT)" >
           <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Since Zero</label> 
           <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channels</label>
           <input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
@@ -187,9 +207,19 @@ border-radius: 15px;
 
       </div>
       <div class="divTableCell">
-        
-              
-            <div id="stats">general Stats HERE</div>
+          
+            <div id="stats">
+              <label for="resultSize">Number of Results:</label><span id="resultSize" name="ResultSize" ></span>
+              <div id="chart3" style="display: inline-block">
+                    <canvas width="250" height="250" id="myChart3"></canvas>
+              </div>
+              <div id="chart4" style="display: inline-block">
+                    <canvas width="250" height="250" id="myChart4"></canvas>
+              </div>
+              <div id="chart5" style="display: inline-block">
+                <canvas width="250" height="250" id="myChart5"></canvas>
+          </div>
+            </div>
 
       </div>
   </div>
@@ -216,6 +246,7 @@ border-radius: 15px;
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 <script src="{{ url_for('static', filename='assets/jquery.daterangepicker.js') }}"></script>
 <script src="{{ url_for('static', filename='assets/notify.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
 
 <script type="text/javascript">
@@ -261,6 +292,7 @@ $('input[type=radio][name=userSort]').change(function() {
 });
 
   $("#resetFilters").click(function(e){
+    $("#syncResult").val('any');
     $("#changeCount").val("");
     $("#syncTime").val("");
     $("#sinceZero").prop('checked', false);
@@ -275,6 +307,8 @@ $('input[type=radio][name=userSort]').change(function() {
   });
 
 $(document).ready(function(){
+
+getSampleDt()
 
 dtConfig = {
   format:'YYYY-MM-DDTHH:mm:ss',
@@ -362,6 +396,15 @@ function sgUserList(){
   data1['endDt'] = $('#dtTo').val();
   data1['sortBy'] = $('input[name="userSort"]:checked').val();
 
+  data1["syncResult"] = $("#syncResult").val();
+  data1["changeCount"] = $('#changeCount').val()
+  data1["syncTime"] = $('#syncTime').val()
+  data1["filterByChannels"] = $('#filterByChannels').is(":checked");
+  data1["conflicts"] = $('#conflicts').is(":checked");
+  data1["sinceZero"] = $('#sinceZero').is(":checked");
+  data1["errors"] = $('#errors').is(":checked");
+
+
   $.ajax({
     type: 'POST',
     url: '/sgUserList',
@@ -370,7 +413,13 @@ function sgUserList(){
     contentType:'application/json; charset=utf-8',
     success: function(data2) { 
           $.each(data2, function(key, value) {
-            var html = '<div class="sgListData"><a href="#sgUser=' + value.user + '"  onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</a></div>'
+
+            var c = "dark"
+          if(key % 2 == 0) {
+            c = "light"
+            }
+
+            var html = '<div class="ws-'+c+'"><a href="#sgUser=' + value.user + '"  onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</a></div>'
           $('#sgUserList').append(html)
         });
         }
@@ -378,6 +427,7 @@ function sgUserList(){
   }
 
   function bigSearch(){
+
 
     var from = $('#dtFrom').val();
     var to = $('#dtTo').val();
@@ -396,7 +446,7 @@ function sgUserList(){
     data1['startDt'] = from
     data1['endDt'] = to
     data1["user"] = $('#searchByUser').val()
-
+    data1["syncResult"] = $("#syncResult").val();
     data1["changeCount"] = $('#changeCount').val()
     data1["syncTime"] = $('#syncTime').val()
     data1["filterByChannels"] = $('#filterByChannels').is(":checked");
@@ -421,17 +471,15 @@ function sgUserList(){
 
 function makeChart(data){
 
-
-  if(typeof c1 !== 'undefined'){
-          c1.clear(); c1.destroy();
+  if(typeof c1 !== 'undefined' || typeof c2 !== 'undefined' || typeof c3 !== 'undefined'|| typeof c4 !== 'undefined' || typeof c5 !== 'undefined'){
+         c1.destroy(); c2.destroy(); c3.destroy(); c4.destroy(); c5.destroy(); 
         }
-  if(typeof c2 !== 'undefined'){
-          c2.clear(); 
-          c2.destroy();
-        }
-
+   $('#resultSize').html('');
  const ctx1 = document.getElementById('myChart1');
  const ctx2 = document.getElementById('myChart2');
+ const ctx3 = document.getElementById('myChart3');
+ const ctx4 = document.getElementById('myChart4');
+ const ctx5 = document.getElementById('myChart5');
 
   var valuesChangesCache = [];
   var valuesChangesQuery = [];
@@ -440,19 +488,48 @@ function makeChart(data){
   var valuesConflicts = [];
   var labelsJ = [];
   var cbwsId = []
+  var userSyncAllTrue = 0
+  var userSyncAllFalse = 0
+  var sinceZeroTrue = 0
+  var sinceZeroFalse = 0
+  var channelCache = 0
+  var channelQuery = 0
+  var resultShow = 0
+
 
   if($('#searchByUser').val() !== ""){
     makeUserDetails(data)
   }
 
 
-  $.each(data, function(key, value) {       
+  $.each(data, function(key, value) {   
+    resultShow = resultShow + 1    
     valuesErrors.push(value.errors)
     valuesChangesCache.push(value.cRow)
     valuesChangesQuery.push(value.qRow)
     valuesSyncTime.push(value.dtDiffSec)
     valuesConflicts.push(value.conflicts)
     labelsJ.push(value.dt) 
+
+      if(typeof value.cRow !== 'undefined'){
+        channelCache = channelCache + value.cRow
+      } 
+
+      if(typeof value.qRow !== 'undefined'){
+      channelQuery = channelQuery + value.qRow  
+      } 
+
+    if(value.tRow == value.sentCount){
+      userSyncAllTrue = userSyncAllTrue + 1
+    }else{
+      userSyncAllFalse = userSyncAllFalse + 1
+    }
+
+    if( value.since == '0' || value.since == 0){
+      sinceZeroTrue =  sinceZeroTrue + 1
+    } else{
+      sinceZeroFalse =  sinceZeroFalse + 1
+    }
   });
 
   c1 = new Chart(ctx1, {
@@ -477,6 +554,7 @@ function makeChart(data){
     ]
     },
     options: {
+      maintainAspectRatio: false,
       scales: {
         y: {
           beginAtZero: true
@@ -504,6 +582,7 @@ function makeChart(data){
     ]
     },
     options: {
+      maintainAspectRatio: false,
       scales: {
         y: {
           beginAtZero: true,
@@ -514,19 +593,171 @@ function makeChart(data){
         }
       }
     }
- 
   });
 
-}
+
+  const optionsPie1 = {
+    tooltips:{
+                  enabled: true
+                },
+    responsive: true,
+   maintainAspectRatio: false,
+    plugins: { 
+       title: {
+               display: true,
+              text: 'Changes Sent (`_changes`) VS Total Docs Sent (JSON)'
+              },
+      legend: {
+        position: 'top'
+      },
+      datalabels: {
+        display: 'auto',
+        color: 'black',
+        font: {
+          weight: 'bold'
+        },
+        formatter: (value, ctx3) => {
+          const total = ctx3.chart.getDatasetMeta(0).total;
+          let percentage = (value * 100 / total).toFixed(0) + "%";
+          return percentage + ' (' + value + ')';
+        },
+      }
+    }
+  }
+
+
+ c3 = new Chart(ctx3, {
+    type: 'pie',
+    data: {
+      labels: ['All Docs Synced',"Missing Docs or No Sync"],
+      datasets: [
+                {
+                  data:[userSyncAllTrue,userSyncAllFalse],
+                  backgroundColor: [
+                                    '#00CF9B',
+                                    '#E55B5E'
+                                    ]
+                }
+                ]
+    },
+    options: optionsPie1,
+    plugins:[ChartDataLabels]
+      });
+
+
+
+
+    const optionsPie2 = {
+    tooltips:{
+                  enabled: true
+                },
+    responsive: true,
+   maintainAspectRatio: false,
+    plugins: { 
+       title: {
+               display: true,
+              text: 'Start from Zero (new) VS Old Sync'
+              },
+      legend: {
+        position: 'top'
+      },
+      datalabels: {
+        display: 'auto',
+        color: 'black',
+        font: {
+          weight: 'bold'
+        },
+        formatter: (value, ctx4) => {
+          const total = ctx4.chart.getDatasetMeta(0).total;
+          let percentage = (value * 100 / total).toFixed(0) + "%";
+          return percentage + ' (' + value + ')';
+        },
+      }
+    }
+  }
+
+      c4 = new Chart(ctx4, {
+    type: 'pie',
+    data: {
+      labels: ["New Sync (since=0)","Old Sync"],
+      datasets: [
+                  {
+                    data:[sinceZeroTrue,sinceZeroFalse],
+                    backgroundColor: [
+                                      '#3366ff',
+                                      '#ff9900'
+                                      ]
+                  }
+                ]
+    },
+    options: optionsPie2,
+    plugins:[ChartDataLabels]
+      });
+
+
+
+    const optionsPie3 = {
+    tooltips:{
+                  enabled: true
+                },
+    responsive: true,
+   maintainAspectRatio: false,
+    plugins: { 
+       title: {
+               display: true,
+              text: 'Channel: Cache Hit VS SQL++ Query'
+              },
+      legend: {
+        position: 'top'
+      },
+      datalabels: {
+        display: 'auto',
+        color: 'black',
+        font: {
+          weight: 'bold'
+        },
+        formatter: (value, ctx5) => {
+          const total = ctx5.chart.getDatasetMeta(0).total;
+          let percentage = (value * 100 / total).toFixed(0) + "%";
+          return percentage;
+        },
+      }
+    }
+  }
+
+
+      c5 = new Chart(ctx5, {
+    type: 'pie',
+    data: {
+      labels: ["Cache Hit","SQL++ Query"],
+      datasets: [
+                  {
+                    data:[channelCache,channelQuery],
+                    backgroundColor: [
+                                      '#00CF9B',
+                                      '#cc33ff'
+                                      ]
+                  }
+                ]
+    },
+    options: optionsPie3,
+    plugins:[ChartDataLabels]
+      });
+
+      $('#resultSize').html(resultShow.toLocaleString());
+
+    }
 
 
   function makeUserDetails(data){
     $('#userSyncStats').empty();
 
       $.each(data, function(key, value) {  
+
+        
         var html = '<div class="userDetailList" onclick="userSyncDetails(\''+value.cbKey+'\')" <b>'+value.dt +"</b>"
           html = html + ' <b>wsId:</b> ' +value.cbKey;
-          html = html + ' <b>Connected Time(sec):</b> ' +value.dtDiffSec + " ";
+          html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec + " ";
 
           var r = ""
           if (value.tRow > 0){
@@ -534,7 +765,20 @@ function makeChart(data){
           var r = r.toFixed(1)
           }
       
-          html = html + ' <b>Changes Feed Items(Total):</b> ' +value.tRow +'  <b>SG\'s Channel Cache Hit Ratio:</b> ' + r + "% "
+          html = html + ' <b>Changes Sent(Total):</b> ' +value.tRow 
+
+          if(value.tRow === value.sentCount){
+            html = html + ' <b>Docs Sent(Total):</b> ' +value.sentCount;
+          }else{
+            html = html + ' <b>Docs Sent(Total):</b> <span style="color: orange;">' +value.sentCount+"</span>";
+          }
+
+          html = html + ' <b>Channel Cache Hit:</b> ' + r + "% "
+          if(value.blipC === true){
+          html = html + ' <b>Sync Closed(blip ended):</b> <span style="color: green;">Yes</span>';
+          }else{
+          html = html + ' <b>Sync Closed(blip ended):</b> <span style="color: orange;">No</span>';
+          }
 
           if(value.conflicts > 0){
             html = html + ' <b>Conflicts:</b> <span style="color: orange;">' +value.conflicts+"</span>";
@@ -568,7 +812,6 @@ function userSyncDetails(wsId){
     dataType: 'json',
     contentType:'application/json; charset=utf-8',
     success: function(data2) { 
-          console.log(data2)
           var html = ''
           html = html + ' <b>Connection Start:</b> '+ data2['dt']+' <b>End:</b> ' + data2["dtEnd"] + ' <b>Connection Time(sec):</b> '+ data2['dtDiffSec']+'</br>'
           html = html + '  <b>Filtered By Channel(s):</b> ' + data2["filterBy"] + ' </br>'
@@ -591,6 +834,28 @@ function wsIdMakeHtml(data){
     html = html + '<div class="ws-'+c+'" >'+ value + '</div>'
     });
   return html
+}
+
+function getSampleDt(){
+
+  $.ajax({
+        url: "/lastWsId",
+        type: 'GET',
+        dataType: 'json', // added data type
+        success: function(data) {
+            
+            const dateString = data[0]['dt'];
+            const date = new Date(dateString);
+            date.setHours(date.getHours() - 6);
+
+          $('#dtFrom').val( date.toISOString().substr(0,19));
+          $('#dtTo').val(data[0]['dt']);
+          sgDbListGet();
+
+        }
+    });
+
+
 }
 </script>  
 </body>
