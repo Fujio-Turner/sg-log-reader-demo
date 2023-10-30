@@ -16,7 +16,7 @@ from flask import Flask,render_template,request
 
 class work():
 
-	debug = True
+	debug = False
 	cb = None
 	sgLogName = "sg_debug.log"
 	cbHost = "127.0.0.1"
@@ -96,7 +96,7 @@ class work():
 		ic(rangeData)
 		if 'sgDb' not in rangeData or not rangeData["sgDb"]:
 			return []
-		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
+		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`attSuccess` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
 		q = q +' AND u.dt BETWEEN $startDt AND $endDt ' 
 		q = q + " AND u.`sgDb` = $sgDb "
 		q = q + ' AND u.`user` IS NOT MISSING '

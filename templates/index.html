@@ -25,12 +25,10 @@ canvas {
 }
 
 #sgDbList{
-  height: 200px;
-  width: 200px;
 }
 
 #sgUserList{
-  height: 300px;
+  height: 200px;
 }
 
 .sgListData
@@ -133,9 +131,10 @@ border-radius: 15px;
       <div class="divTableCell">
         
           <div class="one" id="search">
-          <input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)">
+          <input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)" style="width:300px;">
           <button id="search" class="search">Search</button>
           </div>
+          <label for="resultSize">Number of Results:</label><span id="resultSize" name="ResultSize" ></span>
 
       </div>
   </div>
@@ -170,13 +169,20 @@ border-radius: 15px;
   <div class="divTableRow"  ">
       <div class="divTableCell">
 
-          <div  id="sgUserList" class="sgList"></div>
+        <select id = "sgUserListSelect" style="width: 200px; overflow-x:auto;" size = 10></select>
+      </br>
+        Sort By:
+        <input type="radio" id="userName" name="userSort" value="name" checked="checked" >
+        <label for="userName">Name</label>
+        <input type="radio" id="userCount" name="userSort" value="count">
+        <label for="userCount">Count</label>
+
 
       </div>
       <div class="divTableCell">
         
-          <div id="chart1">
-            <canvas id="myChart1"></canvas>
+          <div id="chart1" style="height: 350px;">
+            <canvas id="myChart1"  ></canvas>
           </div>
 
       </div>
@@ -185,17 +191,12 @@ border-radius: 15px;
 
       <div class="divTableCell">
 
-            Sort By:
-            <input type="radio" id="userName" name="userSort" value="name" checked="checked" >
-            <label for="userName">Name</label>
-            <input type="radio" id="userCount" name="userSort" value="count">
-            <label for="userCount">Count</label>
 
       </div>
       <div class="divTableCell">
 
-        <div id="chart2">
-              <canvas  id="myChart2"></canvas>
+        <div id="chart2" style="height: 350px;">
+              <canvas  id="myChart2" height="350"></canvas>
         </div>
         
       </div>
@@ -209,7 +210,7 @@ border-radius: 15px;
       <div class="divTableCell">
           
             <div id="stats">
-              <label for="resultSize">Number of Results:</label><span id="resultSize" name="ResultSize" ></span>
+
               <div id="chart3" style="display: inline-block">
                     <canvas width="250" height="250" id="myChart3"></canvas>
               </div>
@@ -389,7 +390,7 @@ function sgDbListGet(){
 
 
 function sgUserList(){
-  $('#sgUserList').empty()
+  $('#sgUserListSelect').empty()
   var data1 = {}
   data1["sgDb"] = $('#sgDbListOptions').val()
   data1['startDt'] = $('#dtFrom').val();
@@ -418,9 +419,9 @@ function sgUserList(){
           if(key % 2 == 0) {
             c = "light"
             }
+          var option1 = '<option class="ws-'+c+'" onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</option>'
 
-            var html = '<div class="ws-'+c+'"><a href="#sgUser=' + value.user + '"  onclick="userFill(\''+value.user+'\')"  >' +value.user+ ' ('+value.sgUserCount+')</a></div>'
-          $('#sgUserList').append(html)
+          $('#sgUserListSelect').append(option1)
         });
         }
     });
@@ -475,11 +476,17 @@ function makeChart(data){
          c1.destroy(); c2.destroy(); c3.destroy(); c4.destroy(); c5.destroy(); 
         }
    $('#resultSize').html('');
- const ctx1 = document.getElementById('myChart1');
- const ctx2 = document.getElementById('myChart2');
- const ctx3 = document.getElementById('myChart3');
- const ctx4 = document.getElementById('myChart4');
- const ctx5 = document.getElementById('myChart5');
+   $('#userSyncStats').empty();
+ var ctx1 = document.getElementById('myChart1');
+
+ var ctx2 = document.getElementById('myChart2');
+
+ var ctx3 = document.getElementById('myChart3');
+
+ var ctx4 = document.getElementById('myChart4');
+
+ var ctx5 = document.getElementById('myChart5');
+
 
   var valuesChangesCache = [];
   var valuesChangesQuery = [];
@@ -491,6 +498,7 @@ function makeChart(data){
   var valuesSent = []
   var valuesChangesSent = []
   var valuesSentVsChangesSent = []
+  var valuesAttachements = []
   var userSyncAllTrue = 0
   var userSyncAllFalse = 0
   var sinceZeroTrue = 0
@@ -498,13 +506,15 @@ function makeChart(data){
   var channelCache = 0
   var channelQuery = 0
   var resultShow = 0
+  var countNoProblems = 0
+  var countErrors = 0
+  var countConflicts = 0
+
 
 
   if($('#searchByUser').val() !== ""){
     makeUserDetails(data)
   }
-console.log(data)
-
   $.each(data, function(key, value) {   
 
     
@@ -517,7 +527,9 @@ console.log(data)
     valuesSent.push(value.sentCount)
     valuesChangesSent.push(value.tRow)
     valuesSentVsChangesSent.push(value.sent/value.tRow)
+    valuesAttachements.push(value.attSuccess)
     labelsJ.push(value.dt) 
+
 
       if(typeof value.cRow !== 'undefined'){
         channelCache = channelCache + value.cRow
@@ -564,6 +576,11 @@ console.log(data)
       {
         label: 'Conflicts in Sync',
         data: valuesConflicts,
+        borderWidth: 1
+      },
+      {
+        label: '# of Attachements',
+        data: valuesAttachements,
         borderWidth: 1
       }
     ]

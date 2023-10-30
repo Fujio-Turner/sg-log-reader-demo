@@ -13,17 +13,10 @@ from couchbase.exceptions import CouchbaseException
 from couchbase.exceptions import DocumentNotFoundException
 
 import re
-import datetime
-import time 
+import datetime , time
 import uuid
-
 import cProfile
 import pstats
-
-import asyncio
-
-
-
 
 
 class work():
@@ -41,19 +34,21 @@ class work():
 	logData = None
 	wsIdList = {}
 	wasBlipLines = False
+	blipLineCount = 0
 	oldWsDic = {}
 	sgDtLineOffset = 0
 	sgLogTag = "default"
 	logLineDepthLevel = 1000
+	logLineDepthPercent = 0.02
 	logNumberOflines = 1
+
+
 
 	def __init__(self,file):
 		self.readConfigFile(file)
 		self.debugIceCream()
 		self.makeCB()
 		self.openSgLogFile()
-
-		
 
 	def makeCB(self):
 		try:
@@ -114,8 +109,9 @@ class work():
 			self.findBlipLine(line,index)
 			index +=1
 		self.logNumberOflines = counter
-		self.logLineDepthLevel = counter * 0.02
+		self.logLineDepthLevel = counter * self.logLineDepthPercent
 		print("Number - Lines in log file: ",counter)
+		print("Number - WebSocket Connections: ",self.blipLineCount)
 		print("Done - Reading Data File: ",datetime.datetime.now())
 		self.logData = bigOne
 		ic(self.wsIdList)
@@ -125,11 +121,12 @@ class work():
 
 	def findBlipLine(self,x,lineNumb):
 		if "/_blipsync" in x: 
+			self.blipLineCount += 1
 			userN = self.getUserName(x)
 			t = self.getTimeFromLine(x)
 			httpNum = self.httpTransNum(x)
 			k = httpNum+userN[1]
-			self.wsIdList[k] = {"user":userN[1],"sgDb":userN[0],"auth":False,"dt":t[0],"dtFull":t[1],"http":httpNum}
+			self.wsIdList[k] = {"user":userN[1],"sgDb":userN[0],"auth":False,"dt":t[0],"dtFullEpoch":self.iso8601_to_epoch(t[1]),"http":httpNum}
 			self.wasBlipLines = True
 
 	def findWsId(self,wsLine,index):
@@ -191,9 +188,6 @@ class work():
 				return match.group(1)
 
 		c = line.split(" ")
-
-		print(line)
-
 		if len(c) == 20:
 			return c[16].rstrip(')')
 		else:
@@ -245,7 +239,7 @@ class work():
 			d = {
 				"docType":"byWsId",
 				"user":x["user"],
-				"dtFull":tf[1],
+				"dtFullEpoch":self.iso8601_to_epoch(tf[1]),
 				"dt":tf[0],
 				"dtEnd":tl[0],
 				"dtDiffSec":df,
@@ -265,6 +259,7 @@ class work():
 				"blipC":r[6],
 				"blipO":r[7],
 				"auth":True,
+				"cbTicket":"",
 				"log":r[0]
 				}
 		else:
@@ -273,9 +268,10 @@ class work():
 			"docType":"byWsId",
 			"user":x["user"],
 			"sgDb":x["sgDb"],
-			"dtFull":x['dtFull'],
+			"dtFullEpoch":x['dtFullEpoch'],
 			"dt":x['dt'],
 			"auth":False,
+			"cbTicket":"",
 			"logTag":self.sgLogTag,
 			}
 
@@ -294,6 +290,7 @@ class work():
 		goErrors = 0
 		dcpErrors = 0
 		importErrors = 0
+		attTotal = 0
 		attSuc = 0
 		attFail = 0
 		since = None
@@ -307,8 +304,8 @@ class work():
 		for x in self.logData[startLogLine:]:
 
 			if wsId in x and "WS" not in x:
-
-				passIt = 0
+				if blipClosed == False:
+					passIt = 0
 				cleanLine = x.rstrip('\r|\n')
 				logLine.append(cleanLine)
 				if "Since:" in x and "SyncMsg:" in x:
@@ -329,6 +326,7 @@ class work():
 					continuous = self.findContinuous(x)
 					continue
 				if "BLIP+WebSocket connection closed" in x:
+					passIt = self.logLineDepthLevel - 50
 					blipClosed = True
 					continue
 				if "Upgraded to BLIP+WebSocket protocol" in x:
@@ -339,11 +337,11 @@ class work():
 					filterByChannels = self.findChannelsList(x)
 					continue
 				if " changes to client, from seq " in x:		
-					i = self.findSentCount(x)
-					sent = sent + i
+					j = self.findSentCount(x)
+					sent = sent + j
 					continue
 				if " proveAttachment successful for doc " in x:		
-					attSuc = attSuc + i
+					attSuc = attSuc + 1
 					continue
 				if " 409 Document update conflict " in x:
 					conflictCount = conflictCount + 1
@@ -354,7 +352,9 @@ class work():
 				if "[WRN] c:[" in x:
 					warningCount += 1
 					continue
-
+				if "Type:proposeChanges" in x:
+					proChange = 1
+					continue
 			else:
 				passIt += 1
 			if passIt >= self.logLineDepthLevel:
@@ -379,7 +379,7 @@ class work():
 		return int(a[6])
 
 	def getTimeFromLine(self,line):
-		return [line[0+self.sgDtLineOffset:19+self.sgDtLineOffset],line[0+self.sgDtLineOffset:24+self.sgDtLineOffset]]
+		return [line[0+self.sgDtLineOffset:19+self.sgDtLineOffset].rstrip("-"),line[0+self.sgDtLineOffset:24+self.sgDtLineOffset].rstrip("-")]
 
 	def sgStarts(self,x):
 		if "==== Couchbase Sync Gateway/" in x:
@@ -417,7 +417,6 @@ class work():
 		a = x.split(" ")
 		if self.debug == True:
 			ic(a)
-			print(a[5])
 		return int(a[5])
 
 	def n1qlQueryInfo(self,x):
@@ -554,6 +553,25 @@ class work():
 		if replicatorName in line.lower():
 			ic(line)
 
+	def iso8601_to_epoch(self,timestamp):
+
+		try:
+			dt1 = datetime.datetime.fromisoformat(timestamp)
+			return int(dt1.timestamp())
+		except ValueError:
+			pass
+		
+		try:
+			dt2 = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+			seconds = time.mktime(dt2.timetuple()) + dt2.microsecond/1000000.0
+			return int(seconds)
+		except ValueError:
+			pass
+
+		return False
+		
+
+
 if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		configFile = sys.argv[1]
@@ -562,6 +580,7 @@ if __name__ == "__main__":
 		exit()
 	a = work(configFile)
 	
+
 	'''
 	with cProfile.Profile() as pr:
 		work(configFile)
@@ -571,11 +590,6 @@ if __name__ == "__main__":
 	stats.print_stats()
 	stats.dump_stats(filename="test3.prof")
 	'''
-
-
-	
-
-	
 	
 	##bootstrap reads config.json and loads logfile into memory to read
 	
