@@ -17,6 +17,15 @@ import datetime
 import time 
 import uuid
 
+import cProfile
+import pstats
+
+import asyncio
+
+
+
+
+
 class work():
 
 	debug = False
@@ -35,12 +44,16 @@ class work():
 	oldWsDic = {}
 	sgDtLineOffset = 0
 	sgLogTag = "default"
+	logLineDepthLevel = 1000
+	logNumberOflines = 1
 
 	def __init__(self,file):
 		self.readConfigFile(file)
 		self.debugIceCream()
 		self.makeCB()
 		self.openSgLogFile()
+
+		
 
 	def makeCB(self):
 		try:
@@ -66,7 +79,6 @@ class work():
 
 	def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
-	
 		b = json.loads(a.read())
 		self.sgLogName = b["file-to-parse"]
 		self.cbHost = b["cb-cluster-host"]
@@ -80,26 +92,33 @@ class work():
 
 	def openSgLogFile(self):
 		bigOne = []
-		a = open(self.sgLogName, "r")
-		index = 0
-		for x in a:
+		index = 0	
+		print("Starting - Reading Data File: ",datetime.datetime.now())
+		with open(self.sgLogName, "r") as a:
+			b = [line.strip() for line in a.readlines()]
+		counter = 1
+		for x in b:
+			counter +=1
 			ic(x)
 			line = x.rstrip('\r|\n')
 			bigOne.append(line)
-			self.importCheck(line)
-			self.n1qlQueryInfo(line)
-			self.replicateCheck(line)
-			self.dcpChecks(line)
-			self.sgStarts(line)
+			#self.importCheck(line)
+			#self.n1qlQueryInfo(line)
+			#self.replicateCheck(line)
+			#self.dcpChecks(line)
+			#self.sgStarts(line)
 			if self.wasBlipLines == True:
 				ic(line)
 				self.findWsId(line,index)
 
 			self.findBlipLine(line,index)
 			index +=1
-		a.close()
-		ic(self.wsIdList)
+		self.logNumberOflines = counter
+		self.logLineDepthLevel = counter * 0.02
+		print("Number - Lines in log file: ",counter)
+		print("Done - Reading Data File: ",datetime.datetime.now())
 		self.logData = bigOne
+		ic(self.wsIdList)
 		self.getDataPerWsId()
 		if self.debug == True:
 			ic(self.logData)
@@ -110,17 +129,18 @@ class work():
 			t = self.getTimeFromLine(x)
 			httpNum = self.httpTransNum(x)
 			k = httpNum+userN[1]
-			self.wsIdList[k] = {"user":userN[1],"sgDb":userN[0],"auth":False,"dt":t[0],"http":httpNum}
+			self.wsIdList[k] = {"user":userN[1],"sgDb":userN[0],"auth":False,"dt":t[0],"dtFull":t[1],"http":httpNum}
 			self.wasBlipLines = True
 
 	def findWsId(self,wsLine,index):
-		if "Upgraded to BLIP+WebSocket protocol" in wsLine:
+		if "Upgraded to BLIP+WebSocket protocol" in wsLine or "Upgraded to WebSocket" in wsLine:
 			c = re.findall(r"\[([A-Za-z0-9_]+)\]", wsLine)
-
 			if len(c) > 1:
 				#check if ws in new or old
 				userN = self.getUserNameBlip(wsLine)
+				
 				httpNum = self.httpTransNumPlus(wsLine)
+
 				if httpNum+userN in self.wsIdList:
 					bline = self.wsIdList[httpNum+userN]
 					if "ws" not in bline:
@@ -143,15 +163,36 @@ class work():
 		return h[1].split(" ")[0]
 
 	def getUserName(self,line):
+
 		c = line.split(" ")
 		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
 		sgDb = c[6].split("/")[1]
 		usrN = c[-1].rstrip(')')
-		return [sgDb,usrN]
+
+		if "<ud>" in line and "</ud>" in line:
+			pattern = r'\(as <ud>(.*?)</ud>\)'
+			# Use re.search to find the first match for the pattern in the log line
+			match = re.search(pattern, line)
+			# If a match is found, print the matched string
+			if match:
+				return [sgDb,match.group(1)]
+		else:
+			return [sgDb,usrN]
 
 	def getUserNameBlip(self,line):
 		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
+
+		if "<ud>" in line and "</ud>" in line:
+			pattern = r'\(as <ud>(.*?)</ud>\)'
+			# Use re.search to find the first match for the pattern in the log line
+			match = re.search(pattern, line)
+			# If a match is found, print the matched string
+			if match:
+				return match.group(1)
+
 		c = line.split(" ")
+
+		print(line)
 
 		if len(c) == 20:
 			return c[16].rstrip(')')
@@ -163,74 +204,87 @@ class work():
 				return c[16].rstrip(')')
 
 	def getDataPerWsId(self):
-		sinceList = []
+		print("Starting - Per wsId : ",datetime.datetime.now())
+		#sinceList = []
 		ic(self.wsIdList)
 		for key, x in self.wsIdList.items():
-		#for x in self.wsIdList:
-			if x["auth"] == True:
-				w = x["ws"]
-				r = self.loopLog(x["ws"],x["startLine"],sinceList)
-				tf = self.getTimeFromLine(r[0][0])
-				tl = self.getTimeFromLine(r[0][-1])
-				if r[1] != None:
-					sinceList.append(r[1])
-				tRow = 0
-				if r[2] != None:
-					tRow = r[2]
-				if r[3] != None:
-					tRow = tRow + r[3]
-				if tf[0] != None and tl[0] != None:
-					df = self.diffdates(tf[0],tl[0])
-				else:
-					df = None
-				d = {
-					"docType":"byWsId",
-					"user":x["user"],
-					"dtFull":tf[1],
-					"dt":tf[0],
-					"dtEnd":tl[0],
-					"dtDiffSec":df,
-					"sgDb":x["sgDb"],
-					"since":sinceList,
-					"continuous":r[8],
-					"conflicts":r[9],
-					"errors":r[10],
-					"warnings":r[11],
-					"cRow":r[2],
-					"qRow":r[3],
-					"tRow":tRow,
-					"sentCount":r[12],
-					"filterBy":r[5],
-					"logTag":self.sgLogTag,
-					"blipC":r[6],
-					"blipO":r[7],
-					"auth":True,
-					"log":r[0]
-					}
-			else:
-				w = str(uuid.uuid1())
-				d = {
-				"docType":"byWsId",
-				"user":x["user"],
-				"sgDb":x["sgDb"],
-				"dt":x["dt"],
-				"auth":False,
-				"logTag":self.sgLogTag,
-				}
-
-			sinceList = []
-			
+			z = self.getDataPerWsIdWorker(x)
 			if self.debug == True:
-				ic(x,d)
+				ic(x,z)
 			else:
 				try:
-					self.cbColl.upsert(w,d)
+					self.cbColl.upsert(z[0],z[1])
 				except CouchbaseException:
 					ic(traceback.format_exc())
-					ic("Error: Update of Key: "+w)
-				
+					ic("Error: Update of Key: ",x)
+
+		print("Done - Per wsId : ",datetime.datetime.now())
+
+	def getDataPerWsIdWorker(self,x):
+		sinceList = []
+
+		
+		if x["auth"] == True:
+			w = x["ws"]
+
+			r = self.loopLog(x["ws"],x["startLine"],sinceList)
+			tf = self.getTimeFromLine(r[0][0])
+			tl = self.getTimeFromLine(r[0][-1])
+
+			if r[1] != None:
+				sinceList.append(r[1])
+			tRow = 0
+			if r[2] != None:
+				tRow = r[2]
+			if r[3] != None:
+				tRow = tRow + r[3]
+			if tf[0] != None and tl[0] != None:
+				df = self.diffdates(tf[0],tl[0])
+			else:
+				df = None
+			d = {
+				"docType":"byWsId",
+				"user":x["user"],
+				"dtFull":tf[1],
+				"dt":tf[0],
+				"dtEnd":tl[0],
+				"dtDiffSec":df,
+				"sgDb":x["sgDb"],
+				"since":sinceList,
+				"continuous":r[8],
+				"conflicts":r[9],
+				"errors":r[10],
+				"warnings":r[11],
+				"cRow":r[2],
+				"qRow":r[3],
+				"tRow":tRow,
+				"sentCount":r[12],
+				"attSuccess": r[13],
+				"filterBy":r[5],
+				"logTag":self.sgLogTag,
+				"blipC":r[6],
+				"blipO":r[7],
+				"auth":True,
+				"log":r[0]
+				}
+		else:
+			w = str(uuid.uuid1())
+			d = {
+			"docType":"byWsId",
+			"user":x["user"],
+			"sgDb":x["sgDb"],
+			"dtFull":x['dtFull'],
+			"dt":x['dt'],
+			"auth":False,
+			"logTag":self.sgLogTag,
+			}
+
+		return [w,d]
+
+	
+					
 	def loopLog(self,wsId,startLogLine,sinceList):
-		a = []
+		logLine = []
 		channelRow = 0
 		queryRow = 	0
 		conflictCount = 0
@@ -240,6 +294,8 @@ class work():
 		goErrors = 0
 		dcpErrors = 0
 		importErrors = 0
+		attSuc = 0
+		attFail = 0
 		since = None
 		filterBy = False
 		blipClosed = False
@@ -247,44 +303,64 @@ class work():
 		filterByChannels = []
 		continuous = None
 
-
+		passIt = 0
 		for x in self.logData[startLogLine:]:
+
 			if wsId in x and "WS" not in x:
 
-				b = x.rstrip('\r|\n')
-				a.append(b)
-
+				passIt = 0
+				cleanLine = x.rstrip('\r|\n')
+				logLine.append(cleanLine)
 				if "Since:" in x and "SyncMsg:" in x:
 					if "Since:0 " in x: #looks for _change since=0
 						since = "0"
 					else:
 						since = self.findSince(x)
+
 				if "GetCachedChanges(\"" in x:
 					c = self.changeCacheCount(x)
 					channelRow = channelRow + c
+					continue
 				if "GetChangesInChannel(" in x:
 					d = self.changeQueryCount(x)					
 					queryRow = queryRow + d
+					continue
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = self.findContinuous(x)
+					continue
 				if "BLIP+WebSocket connection closed" in x:
 					blipClosed = True
+					continue
 				if "Upgraded to BLIP+WebSocket protocol" in x:
 					blipOpened = True
-				if "Filter:sync_gateway/bychannel " in x:
+					continue
+				if "Filter:sync_gateway/bychannel" in x:
 					filterBy = True
 					filterByChannels = self.findChannelsList(x)
+					continue
 				if " changes to client, from seq " in x:		
 					i = self.findSentCount(x)
 					sent = sent + i
+					continue
+				if " proveAttachment successful for doc " in x:		
+					attSuc = attSuc + i
+					continue
 				if " 409 Document update conflict " in x:
 					conflictCount = conflictCount + 1
+					continue
 				if "[ERR] c:[" in x:
-					errorCount = errorCount + 1
+					errorCount += 1
+					continue
 				if "[WRN] c:[" in x:
-					warningCount = warningCount + 1
+					warningCount += 1
+					continue
 
-		return [a,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent]
+			else:
+				passIt += 1
+			if passIt >= self.logLineDepthLevel:
+				return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,attSuc]
+				
+		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,attSuc]
 
 	def changeCacheCount(self,line):
 		a = line.split(" ")
@@ -479,15 +555,32 @@ class work():
 			ic(line)
 
 if __name__ == "__main__":
-
 	if len(sys.argv) > 1:
 		configFile = sys.argv[1]
 	else:
 		print("Error: No config.json file given")
 		exit()
-
-	a = work(configFile) ##bootstrap reads config.json and loads logfile into memory to read
+	a = work(configFile)
 	
+	'''
+	with cProfile.Profile() as pr:
+		work(configFile)
+
+	stats = pstats.Stats(pr)
+	stats.sort_stats(pstats.SortKey.TIME)
+	stats.print_stats()
+	stats.dump_stats(filename="test3.prof")
+	'''
+
+
+	
+
+	
+	
+	##bootstrap reads config.json and loads logfile into memory to read
+	
+
+
 	##1.HTTP Logs
 
 	##2a.WS-ID-per-user-list

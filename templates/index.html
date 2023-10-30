@@ -503,9 +503,11 @@ function makeChart(data){
   if($('#searchByUser').val() !== ""){
     makeUserDetails(data)
   }
-
+console.log(data)
 
   $.each(data, function(key, value) {   
+
+    
     resultShow = resultShow + 1    
     valuesErrors.push(value.errors)
     valuesChangesCache.push(value.cRow)
@@ -572,6 +574,10 @@ function makeChart(data){
         y: {
           beginAtZero: true,
           type: 'logarithmic'
+        }, 
+        x :{
+
+          
         }
       }
     }

@@ -16,7 +16,7 @@ from flask import Flask,render_template,request
 
 class work():
 
-	debug = False
+	debug = True
 	cb = None
 	sgLogName = "sg_debug.log"
 	cbHost = "127.0.0.1"
@@ -201,6 +201,7 @@ class work():
 			result = self.cluster.query(q, QueryOptions(named_parameters=rangeData))
 			for row in result.rows():
 				data.append(row)
+			ic(data)
 			return data
 		except CouchbaseException:
 			ic(traceback.format_exc())
