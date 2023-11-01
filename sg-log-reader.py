@@ -239,11 +239,11 @@ class work():
 			d = {
 				"docType":"byWsId",
 				"user":x["user"],
+				"sgDb":x["sgDb"],				
 				"dtFullEpoch":self.iso8601_to_epoch(tf[1]),
 				"dt":tf[0],
 				"dtEnd":tl[0],
 				"dtDiffSec":df,
-				"sgDb":x["sgDb"],
 				"since":sinceList,
 				"continuous":r[8],
 				"conflicts":r[9],
@@ -259,6 +259,7 @@ class work():
 				"blipC":r[6],
 				"blipO":r[7],
 				"auth":True,
+				"orphane":False,
 				"cbTicket":"",
 				"log":r[0]
 				}
@@ -270,14 +271,15 @@ class work():
 			"sgDb":x["sgDb"],
 			"dtFullEpoch":x['dtFullEpoch'],
 			"dt":x['dt'],
-			"auth":False,
-			"cbTicket":"",
 			"logTag":self.sgLogTag,
+			"auth":False,
+			"orphane":True,
+			"cbTicket":"",
+			"log":[]
 			}
 
 		return [w,d]
 
-	
 					
 	def loopLog(self,wsId,startLogLine,sinceList):
 		logLine = []
@@ -308,6 +310,11 @@ class work():
 					passIt = 0
 				cleanLine = x.rstrip('\r|\n')
 				logLine.append(cleanLine)
+
+				if "Filter:sync_gateway/bychannel" in x:
+					filterBy = True
+					filterByChannels = self.findChannelsList(x)
+				
 				if "Since:" in x and "SyncMsg:" in x:
 					if "Since:0 " in x: #looks for _change since=0
 						since = "0"
@@ -332,10 +339,6 @@ class work():
 				if "Upgraded to BLIP+WebSocket protocol" in x:
 					blipOpened = True
 					continue
-				if "Filter:sync_gateway/bychannel" in x:
-					filterBy = True
-					filterByChannels = self.findChannelsList(x)
-					continue
 				if " changes to client, from seq " in x:		
 					j = self.findSentCount(x)
 					sent = sent + j
@@ -346,10 +349,10 @@ class work():
 				if " 409 Document update conflict " in x:
 					conflictCount = conflictCount + 1
 					continue
-				if "[ERR] c:[" in x:
+				if "[ERR]" in x:
 					errorCount += 1
 					continue
-				if "[WRN] c:[" in x:
+				if "[WRN]" in x:
 					warningCount += 1
 					continue
 				if "Type:proposeChanges" in x:

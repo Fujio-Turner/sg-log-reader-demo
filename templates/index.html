@@ -142,7 +142,7 @@ border-radius: 15px;
       <div class="divTableCell">
         
           <div id="sgDbList" class="sgList">
-            <select id="sgDbListOptions"></select>
+            <select id="sgDbListOptions" style="width: 200px; overflow-x:auto;" size = 3></select>
           </div>
 
       </div>
@@ -155,7 +155,7 @@ border-radius: 15px;
               <option value="full">All Docs/Full Sync</option>
               <option value="nonFull">Missing Docs/No Sync</option>
             </select>
-          <label for="changeCount">Changes Feed Items(Total):</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater(INT)" >
+          <label for="changeCount"> _changes Sent (Total):</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater(INT)" >
           <label for="syncTime">Time Connected (sec):</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds(INT)" >
           <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Since Zero</label> 
           <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channels</label>
@@ -181,8 +181,8 @@ border-radius: 15px;
       </div>
       <div class="divTableCell">
         
-          <div id="chart1" style="height: 350px;">
-            <canvas id="myChart1"  ></canvas>
+          <div id="chart1" style="height: 300px;">
+            <canvas id="myChart1" ></canvas>
           </div>
 
       </div>
@@ -195,8 +195,8 @@ border-radius: 15px;
       </div>
       <div class="divTableCell">
 
-        <div id="chart2" style="height: 350px;">
-              <canvas  id="myChart2" height="350"></canvas>
+        <div id="chart2" style="height: 300px;">
+              <canvas  id="myChart2" ></canvas>
         </div>
         
       </div>
@@ -569,7 +569,7 @@ function makeChart(data){
         borderWidth: 1
       },
       {
-        label: 'Changes Sent (_changes)',
+        label: '_changes Sent (Total)',
         data: valuesChangesSent,
         borderWidth: 1
       },
@@ -586,6 +586,12 @@ function makeChart(data){
     ]
     },
     options: {
+              onClick: (evt, elements, chart) => {
+                if (elements[0]) {            
+                    const i = elements[0].index;
+                    console.log(chart.data.labels[i] + ': ' + chart.data.datasets[0].data[i]);
+                  }
+                },
       maintainAspectRatio: false,
       scales: {
         y: {
@@ -607,7 +613,7 @@ function makeChart(data){
       labels: labelsJ,
       datasets: [
       {
-        label: 'Changes Feed (By SG\'s Cache)',
+        label: '_changes (By SG\'s Cache)',
         data: valuesChangesCache,
         borderWidth: 1,
         type:'bar',
@@ -615,7 +621,7 @@ function makeChart(data){
         backgroundColor: '#00CF9B'
       },
       {
-        label: 'Changes Feed (By SQL++ Query)',
+        label: '_changes (By SQL++ Query)',
         data: valuesChangesQuery,
         borderWidth: 1,
         type: 'bar',
@@ -650,7 +656,7 @@ function makeChart(data){
     plugins: { 
        title: {
                display: true,
-              text: 'Changes Sent (`_changes`) VS Total Docs Sent (JSON)'
+              text: '_changes Sent VS Docs Sent'
               },
       legend: {
         position: 'top'
@@ -663,7 +669,7 @@ function makeChart(data){
         },
         formatter: (value, ctx3) => {
           const total = ctx3.chart.getDatasetMeta(0).total;
-          let percentage = (value * 100 / total).toFixed(0) + "%";
+          let percentage = (value * 100 / total).toFixed(1) + "%";
           return percentage + ' (' + value + ')';
         },
       }
@@ -714,7 +720,7 @@ function makeChart(data){
         },
         formatter: (value, ctx4) => {
           const total = ctx4.chart.getDatasetMeta(0).total;
-          let percentage = (value * 100 / total).toFixed(0) + "%";
+          let percentage = (value * 100 / total).toFixed(1) + "%";
           return percentage + ' (' + value + ')';
         },
       }
@@ -750,7 +756,7 @@ function makeChart(data){
     plugins: { 
        title: {
                display: true,
-              text: 'Cache Hit VS SQL++ Query for Channels'
+              text: '_changes: Cache Hit VS SQL++ Query'
               },
       legend: {
         position: 'top'
@@ -763,7 +769,7 @@ function makeChart(data){
         },
         formatter: (value, ctx5) => {
           const total = ctx5.chart.getDatasetMeta(0).total;
-          let percentage = (value * 100 / total).toFixed(0) + "%";
+          let percentage = (value * 100 / total).toFixed(1) + "%";
           return percentage;
         },
       }
@@ -800,7 +806,7 @@ function makeChart(data){
       $.each(data, function(key, value) {  
 
         
-        var html = '<div class="userDetailList" onclick="userSyncDetails(\''+value.cbKey+'\')" <b>'+value.dt +"</b>"
+        var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dt +"</b>"
           html = html + ' <b>wsId:</b> ' +value.cbKey;
           html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec + " ";
 
@@ -810,7 +816,7 @@ function makeChart(data){
           var r = r.toFixed(1)
           }
       
-          html = html + ' <b>Changes Sent(Total):</b> ' +value.tRow 
+          html = html + ' <b>_changes Sent(Total):</b> ' +value.tRow 
 
           if(value.tRow === value.sentCount){
             html = html + ' <b>Docs Sent(Total):</b> ' +value.sentCount;
@@ -818,7 +824,7 @@ function makeChart(data){
             html = html + ' <b>Docs Sent(Total):</b> <span style="color: orange;">' +value.sentCount+"</span>";
           }
 
-          html = html + ' <b>Channel Cache Hit:</b> ' + r + "% "
+          html = html + ' <b>_changes Cache Hit:</b> ' + r + "% "
           if(value.blipC === true){
           html = html + ' <b>Sync Closed(blip ended):</b> <span style="color: green;">Yes</span>';
           }else{
@@ -899,9 +905,18 @@ function getSampleDt(){
 
         }
     });
-
-
 }
+
+
+ function closeUserDetails(divId){
+   $("#wsIdDetails-"+divId).hide()
+ }
+
+ function openUserDetails(divId){
+   $("#wsIdDetails-"+divId).show()
+ }
+
+
 </script>  
 </body>
 </html>
