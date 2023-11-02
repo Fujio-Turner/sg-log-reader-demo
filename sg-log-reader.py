@@ -252,8 +252,10 @@ class work():
 				"cRow":r[2],
 				"qRow":r[3],
 				"tRow":tRow,
+				"attSuccess":r[15],
+				"pushCount":r[14],
+				"pushAttCount": r[13],				
 				"sentCount":r[12],
-				"attSuccess": r[13],
 				"filterBy":r[5],
 				"logTag":self.sgLogTag,
 				"blipC":r[6],
@@ -295,6 +297,8 @@ class work():
 		attTotal = 0
 		attSuc = 0
 		attFail = 0
+		pushCount = 0
+		pushAttachCount = 0
 		since = None
 		filterBy = False
 		blipClosed = False
@@ -344,10 +348,10 @@ class work():
 					sent = sent + j
 					continue
 				if " proveAttachment successful for doc " in x:		
-					attSuc = attSuc + 1
+					attSuc += 1
 					continue
 				if " 409 Document update conflict " in x:
-					conflictCount = conflictCount + 1
+					conflictCount += 1
 					continue
 				if "[ERR]" in x:
 					errorCount += 1
@@ -355,15 +359,22 @@ class work():
 				if "[WRN]" in x:
 					warningCount += 1
 					continue
+				#push from CBL
 				if "Type:proposeChanges" in x:
-					proChange = 1
+					p = self.findPushCount(x)
+					pushCount = pushCount + p
 					continue
+				if "Added attachment" in x and "CRUD:" in x:
+					pushAttachCount +=1
+					continue
+
+
 			else:
 				passIt += 1
 			if passIt >= self.logLineDepthLevel:
-				return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,attSuc]
+				return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc]
 				
-		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,attSuc]
+		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc]
 
 	def changeCacheCount(self,line):
 		a = line.split(" ")
@@ -421,6 +432,12 @@ class work():
 		if self.debug == True:
 			ic(a)
 		return int(a[5])
+	
+	def findPushCount(self,x):
+		a = x.split("#Changes: ")
+		if self.debug == True:
+			ic(a)
+		return int(a[1])
 
 	def n1qlQueryInfo(self,x):
 

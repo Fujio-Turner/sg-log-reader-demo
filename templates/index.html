@@ -151,13 +151,19 @@ border-radius: 15px;
           <div class="one" id="filterBy">
             <label for="syncResult">Sync Result:</label>
             <select name="syncResult" id="syncResult">
-              <option value="any" selected="selected">Any Result</option>
-              <option value="full">All Docs/Full Sync</option>
-              <option value="nonFull">Missing Docs/No Sync</option>
+              <option value="any" selected="selected">Pulled: Any Result</option>
+              <option value="full">Pulled: All Docs/Full Sync</option>
+              <option value="nonFull">Pulled: Missing Docs/No Sync</option>
             </select>
-          <label for="changeCount"> _changes Sent (Total):</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or Greater(INT)" >
-          <label for="syncTime">Time Connected (sec):</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="In Seconds(INT)" >
-          <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Since Zero</label> 
+
+            <select name="noPushes" id="noPushes">
+              <option value="any" selected="selected">Pushed: Any Result</option>
+              <option value="no">Pushed: No Docs</option>
+              <option value="only">Pushed: 1 or more Docs</option>
+            </select>
+          <label for="changeCount"> _changes Sent:</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or greater" >
+          <label for="syncTime">Time Connected:</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="(sec)" >
+          <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Pulled: Since Zero</label> 
           <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channels</label>
           <input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
           <input type="checkbox" id="errors" name="errors" ><label for="errors">Has Errors</label>
@@ -294,6 +300,7 @@ $('input[type=radio][name=userSort]').change(function() {
 
   $("#resetFilters").click(function(e){
     $("#syncResult").val('any');
+    $("#noPushes").value('any')
     $("#changeCount").val("");
     $("#syncTime").val("");
     $("#sinceZero").prop('checked', false);
@@ -404,6 +411,7 @@ function sgUserList(){
   data1["conflicts"] = $('#conflicts').is(":checked");
   data1["sinceZero"] = $('#sinceZero').is(":checked");
   data1["errors"] = $('#errors').is(":checked");
+  data1["noPushes"] = $('#noPushes').val();
 
 
   $.ajax({
@@ -454,6 +462,7 @@ function sgUserList(){
     data1["conflicts"] = $('#conflicts').is(":checked");
     data1["sinceZero"] = $('#sinceZero').is(":checked");
     data1["errors"] = $('#errors').is(":checked");
+    data1["noPushes"] = $('#noPushes').val();
 
       $.ajax({
         type: 'POST',
@@ -499,6 +508,8 @@ function makeChart(data){
   var valuesChangesSent = []
   var valuesSentVsChangesSent = []
   var valuesAttachements = []
+  var valuesPushAttCount = []
+  var valuesPushCount = []
   var userSyncAllTrue = 0
   var userSyncAllFalse = 0
   var sinceZeroTrue = 0
@@ -528,6 +539,8 @@ function makeChart(data){
     valuesChangesSent.push(value.tRow)
     valuesSentVsChangesSent.push(value.sent/value.tRow)
     valuesAttachements.push(value.attSuccess)
+    valuesPushAttCount.push(value.pushAttCount)
+    valuesPushCount.push(value.pushCount)
     labelsJ.push(value.dt) 
 
 
@@ -559,7 +572,7 @@ function makeChart(data){
       datasets: [  
         
       {
-        label: 'Docs Sent',
+        label: 'Docs Pulled',
         data: valuesSent,
         borderWidth: 1
       }, 
@@ -569,7 +582,7 @@ function makeChart(data){
         borderWidth: 1
       },
       {
-        label: '_changes Sent (Total)',
+        label: '_changes Sent',
         data: valuesChangesSent,
         borderWidth: 1
       },
@@ -579,10 +592,21 @@ function makeChart(data){
         borderWidth: 1
       },
       {
-        label: '# of Attachements',
+        label: 'Attachements: Prove',
         data: valuesAttachements,
         borderWidth: 1
+      },
+      {
+        label: 'Attachements: Pushed',
+        data: valuesPushAttCount,
+        borderWidth: 1
+      },
+      {
+        label: 'Docs Pushed',
+        data: valuesPushCount,
+        borderWidth: 1
       }
+
     ]
     },
     options: {
@@ -613,7 +637,7 @@ function makeChart(data){
       labels: labelsJ,
       datasets: [
       {
-        label: '_changes (By SG\'s Cache)',
+        label: '_changes (Cache Hit)',
         data: valuesChangesCache,
         borderWidth: 1,
         type:'bar',
@@ -621,7 +645,7 @@ function makeChart(data){
         backgroundColor: '#00CF9B'
       },
       {
-        label: '_changes (By SQL++ Query)',
+        label: '_changes (SQL++ Query)',
         data: valuesChangesQuery,
         borderWidth: 1,
         type: 'bar',
@@ -656,7 +680,7 @@ function makeChart(data){
     plugins: { 
        title: {
                display: true,
-              text: '_changes Sent VS Docs Sent'
+              text: '_changes Sent VS Docs Pulled'
               },
       legend: {
         position: 'top'
@@ -680,7 +704,7 @@ function makeChart(data){
  c3 = new Chart(ctx3, {
     type: 'pie',
     data: {
-      labels: ['All Docs Synced',"Missing Docs or No Sync"],
+      labels: ['Docs Pulled',"Missing Docs or No Sync"],
       datasets: [
                 {
                   data:[userSyncAllTrue,userSyncAllFalse],
@@ -816,13 +840,15 @@ function makeChart(data){
           var r = r.toFixed(1)
           }
       
-          html = html + ' <b>_changes Sent(Total):</b> ' +value.tRow 
+          html = html + ' <b>_changes Sent:</b> ' +value.tRow 
 
           if(value.tRow === value.sentCount){
-            html = html + ' <b>Docs Sent(Total):</b> ' +value.sentCount;
+            html = html + ' <b>Docs Pulled:</b> ' +value.sentCount;
           }else{
-            html = html + ' <b>Docs Sent(Total):</b> <span style="color: orange;">' +value.sentCount+"</span>";
+            html = html + ' <b>Docs Pulled:</b> <span style="color: orange;">' +value.sentCount+"</span>";
           }
+
+          html = html + ' <b>Docs Pushed:</b> <span>' +value.pushCount+"</span>";
 
           html = html + ' <b>_changes Cache Hit:</b> ' + r + "% "
           if(value.blipC === true){
