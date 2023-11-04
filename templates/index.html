@@ -142,6 +142,8 @@ border-radius: 15px;
       <div class="divTableCell">
         
           <div id="sgDbList" class="sgList">
+            <label for="sgDbListOptions">SG DB List</label>
+          </br>
             <select id="sgDbListOptions" style="width: 200px; overflow-x:auto;" size = 3></select>
           </div>
 
@@ -149,22 +151,24 @@ border-radius: 15px;
       <div class="divTableCell">
        
           <div class="one" id="filterBy">
-            <label for="syncResult">Sync Result:</label>
             <select name="syncResult" id="syncResult">
               <option value="any" selected="selected">Pulled: Any Result</option>
               <option value="full">Pulled: All Docs/Full Sync</option>
-              <option value="nonFull">Pulled: Missing Docs/No Sync</option>
+              <option value="nonFull">Pulled: Missing / Zero Docs</option>
+              <option value="no">Pulled: Zero Docs Only</option>
             </select>
 
             <select name="noPushes" id="noPushes">
               <option value="any" selected="selected">Pushed: Any Result</option>
-              <option value="no">Pushed: No Docs</option>
+              <option value="no">Pushed: Zero Docs Only</option>
               <option value="only">Pushed: 1 or more Docs</option>
             </select>
           <label for="changeCount"> _changes Sent:</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or greater" >
           <label for="syncTime">Time Connected:</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="(sec)" >
           <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Pulled: Since Zero</label> 
-          <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">User Filtered By Channels</label>
+          <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">Pulled: Filtered By Channels</label>
+          <input type="checkbox" id="hasPullAttachments" name="hasPullAttachments" ><label for="hasPullAttachments">Pulled: Attachments</label>  
+          <input type="checkbox" id="hasAttachments" name="hasAttachments" ><label for="hasAttachments">Pushed: Attachments</label>          
           <input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
           <input type="checkbox" id="errors" name="errors" ><label for="errors">Has Errors</label>
           <button id="resetFilters" class="reset">Reset Filters</button>
@@ -174,7 +178,9 @@ border-radius: 15px;
   </div>
   <div class="divTableRow"  ">
       <div class="divTableCell">
-
+        <div id="sgUserListBox" style="display: inline-block;">
+        <label for="sgUserListSelct">SG Users List (Times Connected)</label>
+      </br>
         <select id = "sgUserListSelect" style="width: 200px; overflow-x:auto;" size = 10></select>
       </br>
         Sort By:
@@ -182,14 +188,14 @@ border-radius: 15px;
         <label for="userName">Name</label>
         <input type="radio" id="userCount" name="userSort" value="count">
         <label for="userCount">Count</label>
-
-
+        </div>
       </div>
       <div class="divTableCell">
         
           <div id="chart1" style="height: 300px;">
             <canvas id="myChart1" ></canvas>
           </div>
+         
 
       </div>
   </div>
@@ -197,6 +203,7 @@ border-radius: 15px;
 
       <div class="divTableCell">
 
+        <button style='float: right; position:relative;' class="zoomReset">Zoom Reset</button>
 
       </div>
       <div class="divTableCell">
@@ -226,6 +233,9 @@ border-radius: 15px;
               <div id="chart5" style="display: inline-block">
                 <canvas width="250" height="250" id="myChart5"></canvas>
           </div>
+          <div id="chart6" style="display: inline-block">
+            <canvas  height="250" id="myChart6"></canvas>
+        </div>
             </div>
 
       </div>
@@ -246,7 +256,7 @@ border-radius: 15px;
   </div>
   <!-- DivTable.com -->
 
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" integrity="sha512-UXumZrZNiOwnTcZSHLOfcTs0aos2MzBWHXOHOuB0J/R44QB0dwY5JgfbvljXcklVf65Gc4El6RjZ+lnwd2az2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
@@ -254,6 +264,7 @@ border-radius: 15px;
 <script src="{{ url_for('static', filename='assets/jquery.daterangepicker.js') }}"></script>
 <script src="{{ url_for('static', filename='assets/notify.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js" integrity="sha512-wUYbRPLV5zs6IqvWd88HIqZU/b8TBx+I8LEioQ/UC0t5EMCLApqhIAnUg7EsAzdbhhdgW07TqYDdH3QEXRcPOQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 
 <script type="text/javascript">
@@ -300,13 +311,15 @@ $('input[type=radio][name=userSort]').change(function() {
 
   $("#resetFilters").click(function(e){
     $("#syncResult").val('any');
-    $("#noPushes").value('any')
+    $("#noPushes").val('any');
     $("#changeCount").val("");
     $("#syncTime").val("");
     $("#sinceZero").prop('checked', false);
     $("#errors").prop('checked', false);
     $("#conflicts").prop('checked', false);
     $("#filterByChannels").slideToggle();
+    $('#hasAttachments').prop('checked', false);
+    $('#hasPullAttachments').prop('checked', false);
   });
 
   $("#search").click(function(e){
@@ -412,6 +425,8 @@ function sgUserList(){
   data1["sinceZero"] = $('#sinceZero').is(":checked");
   data1["errors"] = $('#errors').is(":checked");
   data1["noPushes"] = $('#noPushes').val();
+  data1["attachments"] = $('#hasAttachments').is(":checked")
+  data1["attachmentsPull"] = $('#hasPullAttachments').is(":checked")
 
 
   $.ajax({
@@ -463,6 +478,8 @@ function sgUserList(){
     data1["sinceZero"] = $('#sinceZero').is(":checked");
     data1["errors"] = $('#errors').is(":checked");
     data1["noPushes"] = $('#noPushes').val();
+    data1["attachments"] = $('#hasAttachments').is(":checked")
+    data1["attachmentsPull"] = $('#hasPullAttachments').is(":checked")
 
       $.ajax({
         type: 'POST',
@@ -474,9 +491,81 @@ function sgUserList(){
           makeChart(data2)
         }
     });
+
+    $.ajax({
+        type: 'POST',
+        url: '/dtDiffSecStats',
+        data: JSON.stringify(data1),
+        dataType: 'json',
+        contentType:'application/json; charset=utf-8',
+        success: function(data3) { 
+         makeChartDiffSecStat(data3)
+        }
+    });
+
 }
 
+function  makeChartDiffSecStat(data){
 
+  if(typeof c6 !== 'undefined'){
+        c6.destroy(); 
+        }
+
+        labelsJ = []
+        valuesDiffCount = []
+        var ctx6 = document.getElementById('myChart6');
+
+        $.each(data, function(key, value) {  
+        valuesDiffCount.push(value.tCount)
+        labelsJ.push(value.tRange.substring(4)) 
+        });
+
+
+    c6 = new Chart(ctx6, {
+    type: 'bar',
+    data: {
+      labels: labelsJ,
+      datasets: [
+      {
+        label: 'Sec/Minutes',
+        data: valuesDiffCount,
+        borderWidth: 2,
+        type:'bar',
+        borderColor: '#0066ff',
+        backgroundColor: '#6699ff'
+      }
+    ]
+    },
+    options: {
+      plugins: {
+        datalabels: { 
+                anchor: 'end',
+                align: 'top',
+                formatter: Math.round,
+                font: {
+                    weight: 'bold',
+                    size: 16
+                }
+            },
+        legend: { display: false }, 
+      title: {
+        display: true,
+        text: 'Device Connected/Sync Time Length'
+      }
+    },
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+
+        },
+        x: {
+
+        },
+        
+      }
+    }
+  });
+}
 
 
 function makeChart(data){
@@ -507,7 +596,7 @@ function makeChart(data){
   var valuesSent = []
   var valuesChangesSent = []
   var valuesSentVsChangesSent = []
-  var valuesAttachements = []
+  var valuesPullAttachments = []
   var valuesPushAttCount = []
   var valuesPushCount = []
   var userSyncAllTrue = 0
@@ -521,13 +610,18 @@ function makeChart(data){
   var countErrors = 0
   var countConflicts = 0
 
+  var tFrom = new Date( $("#dtFrom").val());
+  var xAxisStart = Math.floor(tFrom.getTime() / 1000);
+
+  var tTo= new Date( $("#dtTo").val())
+  var xAxisEnd =  Math.floor(tTo.getTime() / 1000);
+
 
 
   if($('#searchByUser').val() !== ""){
     makeUserDetails(data)
   }
   $.each(data, function(key, value) {   
-
     
     resultShow = resultShow + 1    
     valuesErrors.push(value.errors)
@@ -538,10 +632,10 @@ function makeChart(data){
     valuesSent.push(value.sentCount)
     valuesChangesSent.push(value.tRow)
     valuesSentVsChangesSent.push(value.sent/value.tRow)
-    valuesAttachements.push(value.attSuccess)
+    valuesPullAttachments.push(value.pullAttCount)
     valuesPushAttCount.push(value.pushAttCount)
     valuesPushCount.push(value.pushCount)
-    labelsJ.push(value.dt) 
+    labelsJ.push(value.dt.substring(11)) 
 
 
       if(typeof value.cRow !== 'undefined'){
@@ -565,48 +659,61 @@ function makeChart(data){
     }
   });
 
+
   c1 = new Chart(ctx1, {
     type: 'line',
     data: {
       labels: labelsJ,
       datasets: [  
-        
-      {
-        label: 'Docs Pulled',
-        data: valuesSent,
-        borderWidth: 1
-      }, 
-      {
-        label: 'Errors In Sync',
-        data: valuesErrors,
-        borderWidth: 1
-      },
       {
         label: '_changes Sent',
         data: valuesChangesSent,
-        borderWidth: 1
+        borderWidth: 1,
+        borderColor: '#FFA955',
+        backgroundColor: '#FFCFA3'
       },
       {
-        label: 'Conflicts in Sync',
-        data: valuesConflicts,
-        borderWidth: 1
-      },
-      {
-        label: 'Attachements: Prove',
-        data: valuesAttachements,
-        borderWidth: 1
-      },
-      {
-        label: 'Attachements: Pushed',
-        data: valuesPushAttCount,
-        borderWidth: 1
-      },
+        label: 'Docs Pulled',
+        data: valuesSent,
+        borderWidth: 1,
+        borderColor: '#36A2EB',
+        backgroundColor: '#A0D1F5'
+      }, 
       {
         label: 'Docs Pushed',
         data: valuesPushCount,
-        borderWidth: 1
-      }
+        borderWidth: 1,
+        borderColor: '#9C9C9C',
+        backgroundColor: '#CFCFCF'
+      },  
+      {
+        label: 'Attachments: Pushed',
+        data: valuesPushAttCount,
+        borderWidth: 1,
+        borderColor: '#9467B6',
+        backgroundColor: '#D093FF'
+      },{
+        label: 'Attachments: Pulled',
+        data: valuesPullAttachments,
+        borderWidth: 1,
+        borderColor: '#32D1C0',
+        backgroundColor: '#39FEE8'
 
+      },
+       {
+        label: 'Conflicts in Sync',
+        data: valuesConflicts,
+        borderWidth: 1,
+        borderColor: '#C1C661',
+        backgroundColor: '#ECF177'
+      },
+      {
+        label: 'Errors In Sync',
+        data: valuesErrors,
+        borderWidth: 1,
+        borderColor: '#FF6384',
+        backgroundColor: '#FFB2C1'
+      }
     ]
     },
     options: {
@@ -624,9 +731,22 @@ function makeChart(data){
         }, 
         x :{
 
-          
         }
-      }
+      },plugins: {
+     
+        zoom: {
+            zoom: {
+              mode: 'x',
+              drag: {
+                  enabled: true,
+                  backgroundColor: "#E1E1E1", 
+                  borderColor: "#AFADAD",
+                  borderWidth: 1
+              }
+            }
+          }
+        
+        }  
     }
   });
 
@@ -657,6 +777,20 @@ function makeChart(data){
     ]
     },
     options: {
+      plugins: {
+
+        zoom: {
+            zoom: {
+              mode: 'x',
+              drag: {
+                  enabled: true,
+                  backgroundColor: "#DADADA", 
+                  borderColor: "#AFADAD",
+                  borderWidth: 2
+              }
+            }
+          }
+      },
       maintainAspectRatio: false,
       scales: {
         y: {
@@ -704,7 +838,7 @@ function makeChart(data){
  c3 = new Chart(ctx3, {
     type: 'pie',
     data: {
-      labels: ['Docs Pulled',"Missing Docs or No Sync"],
+      labels: ['Docs Pulled',"Missing or Zero Docs"],
       datasets: [
                 {
                   data:[userSyncAllTrue,userSyncAllFalse],
@@ -830,27 +964,27 @@ function makeChart(data){
       $.each(data, function(key, value) {  
 
         
-        var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dt +"</b>"
+        var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dt +"</b>";
           html = html + ' <b>wsId:</b> ' +value.cbKey;
-          html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec + " ";
+          html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec+ " ";
 
-          var r = ""
+          var r = "";
           if (value.tRow > 0){
-          r = (value.cRow/value.tRow) * 100
-          var r = r.toFixed(1)
+          r = (value.cRow/value.tRow) * 100;
+          var r = r.toFixed(1);
           }
-      
-          html = html + ' <b>_changes Sent:</b> ' +value.tRow 
+
+          html = html + ' <b>_changes Sent:</b> ' +value.tRow.toLocaleString(); 
 
           if(value.tRow === value.sentCount){
-            html = html + ' <b>Docs Pulled:</b> ' +value.sentCount;
+            html = html + ' <b>Docs Pulled:</b> ' +value.sentCount.toLocaleString();
           }else{
-            html = html + ' <b>Docs Pulled:</b> <span style="color: orange;">' +value.sentCount+"</span>";
+            html = html + ' <b>Docs Pulled:</b> <span style="color: orange;">' +value.sentCount.toLocaleString()+"</span>";
           }
 
-          html = html + ' <b>Docs Pushed:</b> <span>' +value.pushCount+"</span>";
+          html = html + ' <b>Docs Pushed:</b> <span>' +value.pushCount.toLocaleString()+"</span>";
 
-          html = html + ' <b>_changes Cache Hit:</b> ' + r + "% "
+          html = html + ' <b>_changes Cache Hit:</b> ' + r + "% ";
           if(value.blipC === true){
           html = html + ' <b>Sync Closed(blip ended):</b> <span style="color: green;">Yes</span>';
           }else{
@@ -941,6 +1075,11 @@ function getSampleDt(){
  function openUserDetails(divId){
    $("#wsIdDetails-"+divId).show()
  }
+
+ $('.zoomReset').click(function(){
+    c1.resetZoom();
+    c2.resetZoom();
+});
 
 
 </script>  

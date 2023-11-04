@@ -11,6 +11,9 @@ import couchbase.subdocument as SD
 from couchbase.options import (ClusterOptions, ClusterTimeoutOptions, QueryOptions)
 from couchbase.exceptions import CouchbaseException
 from couchbase.exceptions import DocumentNotFoundException
+from couchbase.collection import InsertOptions , UpsertOptions
+
+#https://github.com/couchbase/docs-sdk-python/blob/release/3.1/modules/howtos/examples/caching_flask.py
 
 import re
 import datetime , time
@@ -41,6 +44,7 @@ class work():
 	logLineDepthLevel = 1000
 	logLineDepthPercent = 0.02
 	logNumberOflines = 1
+	logScanDepthAfterClose = 50
 
 
 
@@ -239,7 +243,8 @@ class work():
 			d = {
 				"docType":"byWsId",
 				"user":x["user"],
-				"sgDb":x["sgDb"],				
+				"sgDb":x["sgDb"],
+				"sgColl":{},				
 				"dtFullEpoch":self.iso8601_to_epoch(tf[1]),
 				"dt":tf[0],
 				"dtEnd":tl[0],
@@ -253,10 +258,12 @@ class work():
 				"qRow":r[3],
 				"tRow":tRow,
 				"attSuccess":r[15],
+				"pullAttCount":r[17],
 				"pushCount":r[14],
 				"pushAttCount": r[13],				
 				"sentCount":r[12],
 				"filterBy":r[5],
+				"changesChannels":r[16],
 				"logTag":self.sgLogTag,
 				"blipC":r[6],
 				"blipO":r[7],
@@ -271,8 +278,12 @@ class work():
 			"docType":"byWsId",
 			"user":x["user"],
 			"sgDb":x["sgDb"],
+			"sgColl":{},	
 			"dtFullEpoch":x['dtFullEpoch'],
 			"dt":x['dt'],
+			"rRow":0,
+			"qRow":0,
+			"tRow":0,
 			"logTag":self.sgLogTag,
 			"auth":False,
 			"orphane":True,
@@ -295,6 +306,7 @@ class work():
 		dcpErrors = 0
 		importErrors = 0
 		attTotal = 0
+		pullAttCount = 0
 		attSuc = 0
 		attFail = 0
 		pushCount = 0
@@ -304,6 +316,7 @@ class work():
 		blipClosed = False
 		blipOpened = False
 		filterByChannels = []
+		changesChannels = {}
 		continuous = None
 
 		passIt = 0
@@ -327,17 +340,19 @@ class work():
 
 				if "GetCachedChanges(\"" in x:
 					c = self.changeCacheCount(x)
-					channelRow = channelRow + c
+					channelRow = channelRow + c[0]
+					changesChannels[c[1]] = None
 					continue
 				if "GetChangesInChannel(" in x:
 					d = self.changeQueryCount(x)					
-					queryRow = queryRow + d
+					queryRow = queryRow + d[0]
+					changesChannels[d[1]] = None
 					continue
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = self.findContinuous(x)
 					continue
 				if "BLIP+WebSocket connection closed" in x:
-					passIt = self.logLineDepthLevel - 50
+					passIt = self.logLineDepthLevel - self.logScanDepthAfterClose
 					blipClosed = True
 					continue
 				if "Upgraded to BLIP+WebSocket protocol" in x:
@@ -350,16 +365,21 @@ class work():
 				if " proveAttachment successful for doc " in x:		
 					attSuc += 1
 					continue
+				if "Type:getAttachment Digest:" in x:
+					print(x)		
+					pullAttCount += 1
+					continue
+
 				if " 409 Document update conflict " in x:
 					conflictCount += 1
 					continue
-				if "[ERR]" in x:
+				if "[ERR]" in x or "Error retrieving changes for channel" in x:
 					errorCount += 1
 					continue
 				if "[WRN]" in x:
 					warningCount += 1
 					continue
-				#push from CBL
+				#push from CBL 
 				if "Type:proposeChanges" in x:
 					p = self.findPushCount(x)
 					pushCount = pushCount + p
@@ -372,25 +392,32 @@ class work():
 			else:
 				passIt += 1
 			if passIt >= self.logLineDepthLevel:
-				return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc]
-				
-		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc]
+				filterByChannels.sort()
+				return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc,changesChannels,pullAttCount]
+		filterByChannels.sort()
+		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc,changesChannels,pullAttCount]
 
 	def changeCacheCount(self,line):
 		a = line.split(" ")
 		if self.debug == True:
 			ic(a)
 
+		b = line.split('GetCachedChanges("')
+		c = b[1].split('"')
 		if a[7] == "got":
-			return int(a[8])
+			return [int(a[8]),c[0]]
 		else:
-			return int(a[7])
+			return [int(a[7]),c[0]]
 
 	def changeQueryCount(self,line):
 		a = line.split(" ")
 		if self.debug == True:
 			ic(a)
-		return int(a[6])
+
+		b = line.split('GetChangesInChannel("')
+		c = b[1].split('"')
+
+		return [int(a[6]),c[0]]
 
 	def getTimeFromLine(self,line):
 		return [line[0+self.sgDtLineOffset:19+self.sgDtLineOffset].rstrip("-"),line[0+self.sgDtLineOffset:24+self.sgDtLineOffset].rstrip("-")]
@@ -574,7 +601,6 @@ class work():
 			ic(line)
 
 	def iso8601_to_epoch(self,timestamp):
-
 		try:
 			dt1 = datetime.datetime.fromisoformat(timestamp)
 			return int(dt1.timestamp())
@@ -589,6 +615,23 @@ class work():
 			pass
 
 		return False
+	
+	def cbInsert(self,key,doc,ttl=0):
+		return
+	
+	def cbGet(self,key):
+		return
+
+	def cbAppendArray(self,key,value,data,ttl=0):
+		return
+	
+	def cbUpsert(self,key,doc,ttl=0):
+		opts = InsertOptions(timeout=timedelta(seconds=5))
+		try:
+			self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			ic("Error: Upsert Key:",key)
 		
 
 
@@ -617,12 +660,12 @@ if __name__ == "__main__":
 
 	##1.HTTP Logs
 
-	##2a.WS-ID-per-user-list
-	#wsIdList = a.findWsId()
+	##2a.WS-ID-per-user-list      -- Completed
+	#wsIdList = a.findWsId()    
 
-	##2b.from-WS-ID-diagnose-User
-	#a.getDataPerWsId(wsIdList)
+	##2b.from-WS-ID-diagnose-User -- Completed(but slow on big files)
 
+	#a.getDataPerWsId(wsIdList) 
 	##3.SG-start times
 	#a.sgStarts()
 	##4.DCP-errors-counter

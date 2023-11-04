@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 from icecream import ic
 
@@ -75,9 +74,10 @@ class work():
 			return []
 
 		q = 'SELECT  count(u.`sgDb`) as `sgDbCount` , u.`sgDb` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q +' AND u.dt BETWEEN $startDt AND $endDt ' 
-		q = q + " AND u.`sgDb` IS NOT MISSING "
+		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND u.`sgDb` IS NOT MISSING '
 		q = q + ' AND u.`user` IS NOT MISSING '
+		q = q + ' AND u.`orphane` = False '
 		q = q + ' GROUP BY u.`sgDb` '
 		q = q + ' ORDER BY u.`sgDb` '
 
@@ -96,10 +96,11 @@ class work():
 		ic(rangeData)
 		if 'sgDb' not in rangeData or not rangeData["sgDb"]:
 			return []
-		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`attSuccess`,u.`pushAttCount`, u.`pushCount` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q +' AND u.dt BETWEEN $startDt AND $endDt ' 
-		q = q + " AND u.`sgDb` = $sgDb "
+		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`dtFullEpoch`,u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`attSuccess`,u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
+		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND u.`sgDb` = $sgDb '
 		q = q + ' AND u.`user` IS NOT MISSING '
+		q = q + ' AND u.`orphane` = False '
 
 		if rangeData["noPushes"] and rangeData["noPushes"] == "no":
 			q = q + ' AND u.`pushCount` = 0 '
@@ -113,6 +114,9 @@ class work():
 		if rangeData["syncResult"] and rangeData["syncResult"] == "nonFull":
 			q = q + ' AND u.`sentCount` != u.`tRow` '
 
+		if rangeData["syncResult"] and rangeData["syncResult"] == "no":
+				q = q + ' AND u.`sentCount` = 0 '
+
 		if rangeData["errors"] and rangeData["errors"] == True:
 			q = q + ' AND u.`errors` > 0 '
 
@@ -124,6 +128,12 @@ class work():
 
 		if rangeData["filterByChannels"] and rangeData["filterByChannels"] == True:
 			q = q + ' AND ARRAY_LENGTH(u.`filterBy`) > 0 '
+
+		if rangeData["attachments"] and rangeData["attachments"] == True:
+			q = q + ' AND u.`pushAttCount` > 0 '
+
+		if rangeData["attachmentsPull"] and rangeData["attachmentsPull"] == True:
+			q = q + ' AND u.`pullAttCount` > 0 '
 
 		if rangeData["syncTime"]:
 			q = q + ' AND u.`dtDiffSec` >= TONUMBER('+rangeData["syncTime"]+') '
@@ -148,6 +158,88 @@ class work():
 			ic(traceback.format_exc())
 			return []
 		
+	def cbDtDiffStats(self,rangeData):
+
+			ic(rangeData)
+			if 'sgDb' not in rangeData or not rangeData["sgDb"]:
+				return []
+			
+			q = 'SELECT COUNT(t.tRange) as tCount, tRange FROM ('
+			q = q + ' SELECT CASE WHEN u.dtDiffSec <=1 then "01. 1 Sec or less" '
+			q = q + ' WHEN u.dtDiffSec between 2 and 10 then "02. 2 to 10 Sec" '
+			q = q + ' WHEN u.dtDiffSec between 11 and 30 then "03. 11 to 30 Sec" '
+			q = q + ' WHEN u.dtDiffSec between 31 and 60 then "04. 31 to 60 Sec" '
+			q = q + ' WHEN u.dtDiffSec between 61 and 120 then "05. 1 to 2 minutes" '
+			q = q + ' WHEN u.dtDiffSec between 121 and 300 then "06. 2 to 5 minutes" '
+			q = q + ' WHEN u.dtDiffSec between 301 and 900 then "07. 5 to 15 minutes" '
+			q = q + ' WHEN u.dtDiffSec between 901 and 1800 then "08. 15 to 30 minutes" '
+			q = q + ' WHEN u.dtDiffSec between 1801 and 3600 then "09. 30 to 60 minutes" '
+			q = q + ' WHEN u.dtDiffSec > 3601 then "10. 60 minutes or more"' 
+			q = q + ' else "11. n/a" '
+			q = q + ' END  as tRange '
+			q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId" '
+			q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+			q = q + ' AND u.`sgDb` = $sgDb '
+			q = q + ' AND u.`orphane` = False '
+
+			if rangeData["noPushes"] and rangeData["noPushes"] == "no":
+				q = q + ' AND u.`pushCount` = 0 '
+
+			if rangeData["noPushes"] and rangeData["noPushes"] == "only":
+				q = q + ' AND u.`pushCount` > 0 '
+
+			if rangeData["syncResult"] and rangeData["syncResult"] == "full":
+				q = q + ' AND u.`sentCount` = u.`tRow` '
+
+			if rangeData["syncResult"] and rangeData["syncResult"] == "nonFull":
+				q = q + ' AND u.`sentCount` != u.`tRow` '
+
+			if rangeData["syncResult"] and rangeData["syncResult"] == "no":
+				q = q + ' AND u.`sentCount` = 0 '
+
+			if rangeData["errors"] and rangeData["errors"] == True:
+				q = q + ' AND u.`errors` > 0 '
+
+			if rangeData["conflicts"] and rangeData["conflicts"] == True:
+				q = q + ' AND u.`conflicts` > 0 '
+			
+			if rangeData["sinceZero"] and rangeData["sinceZero"] == True:
+				q = q + ' AND u.`since` = ["0"] '
+
+			if rangeData["filterByChannels"] and rangeData["filterByChannels"] == True:
+				q = q + ' AND ARRAY_LENGTH(u.`filterBy`) > 0 '
+
+			if rangeData["attachments"] and rangeData["attachments"] == True:
+				q = q + ' AND u.`pushAttCount` > 0 '
+
+			if rangeData["attachmentsPull"] and rangeData["attachmentsPull"] == True:
+				q = q + ' AND u.`pullAttCount` > 0 '
+
+			if rangeData["syncTime"]:
+				q = q + ' AND u.`dtDiffSec` >= TONUMBER('+rangeData["syncTime"]+') '
+
+			if rangeData["changeCount"] :
+				q = q + ' AND u.`tRow` >= TONUMBER('+rangeData["changeCount"]+') '
+
+			if 'user' not in rangeData or not rangeData["user"]:
+				q = q + ' AND u.`user` IS NOT MISSING '
+			else:
+				q = q + ' AND u.`user` = $user '
+
+			q = q + ' ) as t GROUP BY t.tRange ORDER by t.tRange '
+			data = []
+			ic(q)
+
+			try:
+				result = self.cluster.query(q, QueryOptions(named_parameters=rangeData))
+				for row in result.rows():
+					data.append(row)
+				return data
+			except CouchbaseException:
+				ic(traceback.format_exc())
+				return []
+
+
 	def cbUserSearch(self,userName):
 		try:
 			return self.cbColl.get(wsId).value
@@ -164,9 +256,10 @@ class work():
 			return []
 
 		q = 'SELECT  count(u.`user`) as `sgUserCount` , u.`user` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q +' AND u.dt BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
 		q = q + ' AND u.`sgDb` = $sgDb '
 		q = q + ' AND u.`user` IS NOT MISSING '
+		q = q + ' AND u.`orphane` = False '
 
 		if rangeData["noPushes"] and rangeData["noPushes"] == "no":
 			q = q + ' AND u.`pushCount` = 0 '
@@ -180,6 +273,9 @@ class work():
 		if rangeData["syncResult"] and rangeData["syncResult"] == "nonFull":
 			q = q + ' AND u.`sentCount` != u.`tRow` '
 
+		if rangeData["syncResult"] and rangeData["syncResult"] == "no":
+				q = q + ' AND u.`sentCount` = 0 '
+
 		if rangeData["errors"] and rangeData["errors"] == True:
 			q = q + ' AND u.`errors` > 0 '
 
@@ -191,6 +287,12 @@ class work():
 
 		if rangeData["filterByChannels"] and rangeData["filterByChannels"] == True:
 			q = q + ' AND ARRAY_LENGTH(u.`filterBy`) > 0 '
+
+		if rangeData["attachments"] and rangeData["attachments"] == True:
+			q = q + ' AND u.`pushAttCount` > 0 '
+
+		if rangeData["attachmentsPull"] and rangeData["attachmentsPull"] == True:
+			q = q + ' AND u.`pullAttCount` > 0 '
 
 		if rangeData["syncTime"]:
 			q = q + ' AND u.`dtDiffSec` >= TONUMBER('+rangeData["syncTime"]+') '
@@ -228,6 +330,8 @@ class work():
 		q = q + ' AND u.dt IS NOT MISSING '
 		q = q + ' AND u.`sgDb` IS NOT MISSING '
 		q = q + ' AND u.`user` IS NOT MISSING '
+		q = q + ' AND u.`dtDiffSec` IS NOT MISSING '
+		q = q + ' AND u.`orphane` = False '
 		q = q + ' ORDER BY u.`dt` DESC '
 		q = q + ' LIMIT 1'
 
@@ -259,6 +363,16 @@ def dateRange():
 		return a
 	else:
 		return []
+	
+@app.route('/dtDiffSecStats', methods=['POST'])
+def dateDiffSec():
+	if request.method == 'POST':
+		ic(request.json)
+		a = cb.cbDtDiffStats(request.json)
+		return a
+	else:
+		return []
+
 
 @app.route('/wsId',methods=['POST'])
 def getWsId():
@@ -294,4 +408,4 @@ def lastWsId():
 from flask import Flask
 
 if __name__ == "__main__":
-	app.run(debug = True)
+	app.run(debug = True , port=8080)
