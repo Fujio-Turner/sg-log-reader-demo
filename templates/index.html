@@ -4,7 +4,6 @@
         <title>Sync Gateway Log Reader GUI</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <link rel="stylesheet" href="{{ url_for('static', filename='assets/daterangepicker.css') }}">
 <style>
 canvas {
@@ -83,8 +82,6 @@ border-radius: 15px;
   overflow: scroll;
 }
 
-
-
 .wsIdDetailRow {
 
 }
@@ -113,9 +110,6 @@ border-radius: 15px;
 </style>
 </head>
 <body>        
-
- 
-
 <div class="divTable">
   <div class="divTableBody">
   <div class="divTableRow">
@@ -133,8 +127,16 @@ border-radius: 15px;
           <div class="one" id="search">
           <input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)" style="width:300px;">
           <button id="search" class="search">Search</button>
+          <label for="resultSize">  Number of Results: </label><b><span id="resultSize" name="ResultSize" ></span></b>
+          </br>
+          <label for="viewBy">graph's x-axis view by: </label>
+          <select name="viewBy" id="viewBy">
+            <option value="">All Entries</option>
+            <option value="sec" selected="selected">Seconds</option>
+            <option value="min">Minutes</option>
+          </select>
           </div>
-          <label for="resultSize">Number of Results:</label><span id="resultSize" name="ResultSize" ></span>
+          
 
       </div>
   </div>
@@ -196,15 +198,12 @@ border-radius: 15px;
             <canvas id="myChart1" ></canvas>
           </div>
          
-
       </div>
   </div>
   <div class="divTableRow" >
 
       <div class="divTableCell">
-
         <button style='float: right; position:relative;' class="zoomReset">Zoom Reset</button>
-
       </div>
       <div class="divTableCell">
 
@@ -256,7 +255,7 @@ border-radius: 15px;
   </div>
   <!-- DivTable.com -->
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" integrity="sha512-UXumZrZNiOwnTcZSHLOfcTs0aos2MzBWHXOHOuB0J/R44QB0dwY5JgfbvljXcklVf65Gc4El6RjZ+lnwd2az2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" integrity="sha512-UXumZrZNiOwnTcZSHLOfcTs0aos2MzBWHXOHOuB0J/R44QB0dwY5JgfbvljXcklVf65Gc4El6RjZ+lnwd2az2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
@@ -266,10 +265,10 @@ border-radius: 15px;
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js" integrity="sha512-wUYbRPLV5zs6IqvWd88HIqZU/b8TBx+I8LEioQ/UC0t5EMCLApqhIAnUg7EsAzdbhhdgW07TqYDdH3QEXRcPOQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-
 <script type="text/javascript">
 
 sgName = ""
+viewByValue = ""
 
 $('#dtFrom').on('input',function(e){
 
@@ -309,6 +308,25 @@ $('input[type=radio][name=userSort]').change(function() {
     sgUserList()
 });
 
+$("#searchByUser").on("input", function(){
+    
+  /*
+      if($("#searchByUser").val() == ''){
+          console.log(viewByValue)
+        $("#viewBy").prop("disabled", false);
+        $("#viewBy").val(viewByValue).change()
+      }else{
+        $("#viewBy").prop("disabled", true);
+        viewByValue =  $("#viewBy").val()
+      }
+      */
+    });
+
+
+
+
+
+
   $("#resetFilters").click(function(e){
     $("#syncResult").val('any');
     $("#noPushes").val('any');
@@ -322,10 +340,7 @@ $('input[type=radio][name=userSort]').change(function() {
     $('#hasPullAttachments').prop('checked', false);
   });
 
-  $("#search").click(function(e){
-    sgUserList()
-    bigSearch()
-  });
+
 
 $(document).ready(function(){
 
@@ -452,7 +467,6 @@ function sgUserList(){
 
   function bigSearch(){
 
-
     var from = $('#dtFrom').val();
     var to = $('#dtTo').val();
     if(from ==="" && to === ""){
@@ -480,6 +494,12 @@ function sgUserList(){
     data1["noPushes"] = $('#noPushes').val();
     data1["attachments"] = $('#hasAttachments').is(":checked")
     data1["attachmentsPull"] = $('#hasPullAttachments').is(":checked")
+    if($('#searchByUser').val() !== ""){
+      data1["viewBy"] = ""
+    }else{
+    data1["viewBy"] = $('#viewBy').val();
+    }
+ 
 
       $.ajax({
         type: 'POST',
@@ -621,6 +641,7 @@ function makeChart(data){
   if($('#searchByUser').val() !== ""){
     makeUserDetails(data)
   }
+
   $.each(data, function(key, value) {   
     
     resultShow = resultShow + 1    
@@ -772,8 +793,6 @@ function makeChart(data){
         borderColor: '#cc33ff',
         backgroundColor: '#cc33ff'
       }
-
-
     ]
     },
     options: {
@@ -852,9 +871,6 @@ function makeChart(data){
     options: optionsPie1,
     plugins:[ChartDataLabels]
       });
-
-
-
 
     const optionsPie2 = {
     tooltips:{
@@ -960,6 +976,13 @@ function makeChart(data){
 
   function makeUserDetails(data){
     $('#userSyncStats').empty();
+    //viewByValue = $("#viewBy").val()
+    //$("#viewBy").val("")
+    //$("#viewBy").prop("disabled", true);
+
+
+    //$.notify('graph x-axis view by: "All Entries" when user search',"info");
+
 
       $.each(data, function(key, value) {  
 
@@ -1007,9 +1030,7 @@ function makeChart(data){
        });
   }
   
-function userFill(username){
-  $('#searchByUser').val(username);
-}
+
 
 function userSyncDetails(wsId){
 
@@ -1067,13 +1088,17 @@ function getSampleDt(){
     });
 }
 
+function userFill(username){
+  $("#viewBy").prop("disabled", false);
+  $('#searchByUser').val(username);
+}
 
  function closeUserDetails(divId){
-   $("#wsIdDetails-"+divId).hide()
+   $("#wsIdDetails-"+divId).hide();
  }
 
  function openUserDetails(divId){
-   $("#wsIdDetails-"+divId).show()
+   $("#wsIdDetails-"+divId).show();
  }
 
  $('.zoomReset').click(function(){
@@ -1081,7 +1106,10 @@ function getSampleDt(){
     c2.resetZoom();
 });
 
-
+$("#search").click(function(e){
+    sgUserList();
+    bigSearch();
+  });
 </script>  
 </body>
 </html>

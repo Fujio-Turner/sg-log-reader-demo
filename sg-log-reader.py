@@ -22,6 +22,7 @@ import cProfile
 import pstats
 
 
+
 class work():
 
 	debug = False
@@ -365,8 +366,7 @@ class work():
 				if " proveAttachment successful for doc " in x:		
 					attSuc += 1
 					continue
-				if "Type:getAttachment Digest:" in x:
-					print(x)		
+				if "Type:getAttachment Digest:" in x:		
 					pullAttCount += 1
 					continue
 

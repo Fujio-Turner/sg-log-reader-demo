@@ -96,7 +96,20 @@ class work():
 		ic(rangeData)
 		if 'sgDb' not in rangeData or not rangeData["sgDb"]:
 			return []
-		q = 'SELECT u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`,u.`dtFullEpoch`,u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`attSuccess`,u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
+		
+		q = 'SELECT ' 
+		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
+		
+			q = q + ' u.`dt`, COUNT(u.`dt`) as `dtCount` , SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
+		
+		elif rangeData["viewBy"] and rangeData["viewBy"] == "min" :
+		
+			q = q + ' SUBSTR(u.`dt`,1,15) as `dt`, COUNT(SUBSTR(u.`dt`,1,15)) as `dtCount`, SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
+
+		else:
+			q = q + ' u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
+
+		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
 		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
 		q = q + ' AND u.`sgDb` = $sgDb '
 		q = q + ' AND u.`user` IS NOT MISSING '
@@ -146,7 +159,16 @@ class work():
 		else:
 			q = q + ' AND u.`user` = $user '
 
-		q = q + ' ORDER BY u.dt ASC '
+		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
+			q = q + ' GROUP BY u.`dt` '
+
+		if rangeData["viewBy"] and rangeData["viewBy"] == "min":
+			q = q + ' GROUP BY SUBSTR(u.`dt`,1,15) '
+			q = q + ' ORDER BY SUBSTR(u.`dt`,1,15) ASC '
+		else:
+			q = q + ' ORDER BY u.`dt` ASC '
+
+
 		data = []
 		ic(q)
 		try:
@@ -408,4 +430,4 @@ def lastWsId():
 from flask import Flask
 
 if __name__ == "__main__":
-	app.run(debug = True , port=8080)
+	app.run(debug = False , host="0.0.0.0" , port=8080)
