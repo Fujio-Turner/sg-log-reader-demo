@@ -71,10 +71,10 @@ border-radius: 15px;
 }
 
 .userDetailList{
-  border-radius: 6px; 
+  border-radius: 5px; 
   border: 2px solid #d7d7d7;
   padding:0.5em;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .userSyncStats{
@@ -165,7 +165,7 @@ border-radius: 15px;
               <option value="no">Pushed: Zero Docs Only</option>
               <option value="only">Pushed: 1 or more Docs</option>
             </select>
-          <label for="changeCount"> _changes Sent:</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or greater" >
+          <label for="changeCount">   _changes Sent:</label><input class="intInput" type="text" id="changeCount" name="changeCount" placeholder="0 or greater" >
           <label for="syncTime">Time Connected:</label><input class="intInput" type="text" id="syncTime" name="syncTime" placeholder="(sec)" >
           <input type="checkbox" id="sinceZero" name="sinceZero" ><label for="sinceZero">Pulled: Since Zero</label> 
           <input type="checkbox" id="filterByChannels" name="filterByChannels" ><label for="filterByChannels">Pulled: Filtered By Channels</label>
@@ -335,7 +335,7 @@ $("#searchByUser").on("input", function(){
     $("#sinceZero").prop('checked', false);
     $("#errors").prop('checked', false);
     $("#conflicts").prop('checked', false);
-    $("#filterByChannels").slideToggle();
+    $("#filterByChannels").prop('checked', false);
     $('#hasAttachments').prop('checked', false);
     $('#hasPullAttachments').prop('checked', false);
   });

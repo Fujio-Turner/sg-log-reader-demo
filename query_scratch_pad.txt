@@ -81,3 +81,12 @@ ORDER BY `sgDbList` DESC
  AND u.dt BETWEEN "2022-01-21T18:02:55" AND "2022-01-21T18:03:00"
 
 CREATE INDEX userSyncFinder_v1 ON `sg-log-reader`.`_default`.`_default`(`dt`,`user`,`sgDb`) WHERE `docType` = "byWsId"
+
+
+
+
+CREATE INDEX `userSyncFinder_v5` ON `sg-log-reader`(`dt`,`user`,`sgDb`,`dtDiffSec`) WHERE ((`docType` = "byWsId") and (`orphane` = false))
+
+CREATE INDEX `userSyncFinder_v6` ON `sg-log-reader`(`dt`,`user`,`sgDb`,`dtDiffSec`,`sentCount`,`errors`,`tRow`,`since`,ARRAY_LENGTH(`filterBy`),`conflicts`,`pushAttCount`,`pullAttCount`,`pushCount`,`qRow`,`cRow`,`blipC`) WHERE ((`docType` = "byWsId") and (`orphane` = false))
+
+u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` 
