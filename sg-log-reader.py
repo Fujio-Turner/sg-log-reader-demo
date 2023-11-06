@@ -20,6 +20,7 @@ import datetime , time
 import uuid
 import cProfile
 import pstats
+import hashlib
 
 
 
@@ -274,7 +275,10 @@ class work():
 				"log":r[0]
 				}
 		else:
-			w = str(uuid.uuid1())
+			hash_object = hashlib.md5()
+			hash_object.update(str(x).encode())
+			#w = str(uuid.uuid1())
+			w = hash_object.hexdigest()
 			d = {
 			"docType":"byWsId",
 			"user":x["user"],

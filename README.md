@@ -3,20 +3,40 @@ Version 2.0
 
 ![Dashboard](img/sg-log-reader-2.0.png)
 
+##Why
+
 Couchbase Mobile 2.x and greater now communicates via WebSockets.
 
-This means its easier to track a mobile users replication to see "Why is sync is slow?" or "Why is it not syncing?"
+This means it easier to track a mobile user's replication to see "Why is sync is slow?" or "Why is it not syncing?". 
 
-The sg-log-reader tool take your SG log file ,sg_info.log, parses it and puts it into a Couchbase Server bucket to query from.
+#### Future - More
+In the future it will do more to understand other things going on inside Sync Gateway more to debug why there are sync issues.
 
+##What
+The sg-log-reader tool takes your SG log file and parses them to:
+
+* Aggregate
+
+* Count 
+
+* Sum
+
+* and More 
+
+It takes the above information and puts it into a Couchbase Server bucket to query for a built-in web dashboard (ABOVE IMAGE).
+
+##How
+
+####Process
 You just need to:
- 1. pick a sg_info.log for the python script to process.
- 2. Have acccess to a CB Cluster for the script to insert data into.
- 3. Open up the included index.html and pick a Begin and End Date to query
- 4. Have pipenv installed
 
+ 1. Pick a sg_info.log for the python script to process.
+ 2. Have access to a CB Cluster for the script to insert data into.
+ 3. Open up the included index.html and pick a Begin and End Date to query
+
+####Result
  It will:
-   Output all the Sync Gateway database
+   Output all the Sync Gateway's databases
    Output a list of names of all device users.
    Output a graph of all the synced that happen from the: Begin & Date you picked.
    You can pick a specific user to drill down to.
@@ -24,22 +44,24 @@ You just need to:
 
 
 ###Requirements:
+
 Couchbase Bucket
 
-Couchbase Cluster With Index and Query Service
+Couchbase Cluster with Index and Query Service
 
 Create the below index.
 
-```
+```sql
 CREATE INDEX `userSyncFinder_v6` ON `sg-log-reader`(`dt`,`user`,`sgDb`,`dtDiffSec`,`sentCount`,`errors`,`tRow`,`since`,array_length(`filterBy`),`conflicts`,`pushAttCount`,`pullAttCount`,`pushCount`,`qRow`,`cRow`,`blipC`) WHERE ((`docType` = "byWsId") and (`orphane` = false))
 ```
+
 NOTE: if you put the data in a different bucket then `sg-log-reader` change the above to match your bucket name.
 
 
-Install 
+####Install 
 
-Python Virtual Environement.
-https://pypi.org/project/pipenv/
+Python Virtual Environment:
+[https://pypi.org/project/pipenv/](https://pypi.org/project/pipenv/)
 
 or 
 
@@ -49,11 +71,14 @@ Homebrew install
 # brew install pipenv
 ```
 
+
+##Running|Using It
 Running the code by creating a Python Virtual Environment
 
 ```console
 # pipenv shell 
 ```
+
 
 Install some Python libaries that will run in in your virtual environment.
 
@@ -78,7 +103,7 @@ Update the config.json with:
 }
  ```
 
-Let's Parse the log file. Run the command below in the dictory of the sg-log-reader download folder
+Let's Parse the log file. Run the command below in the directory of the sg-log-reader downloaded folder
 
 ```console
  # python3 sg-log-reader.py config.json
@@ -96,11 +121,13 @@ Starting - Per wsId :  2023-11-05 09:43:37.112698
 Done - Per wsId :  2023-11-05 09:48:19.576021
 ```
 
-**NOTE sg_info.log that is large, 100MB and/or have alot of websocket information will take a long time to process.
+**NOTE:** a sg_info.log that is large , 100MB+ and/or more have a lot of unique WebSocket information will take a long time to process.
 
-After you get the above `Done - Per wsId: ...` data should be in your couchbase bucket now.
+After you get the above ```Done - Per wsId: ...``` data should be in your Couchbase bucket.
 
-To get to a dashboard to see stats you'll run a local python Flask Web Server via
+####Dashboard
+
+To get to a dashboard to see stats you'll run a local python Flask Web Server. Run the Command below to start the web server.
 
 ```console
 # python3 app.py
@@ -117,33 +144,34 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://192.168.0.193:8080
 ```
 
-Now open up a Web Browse and go to:
-
-[http://127.0.0.1:8080](http://127.0.0.1:8080)
+Now open up a Web Browser and go to: [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
 
+The dashboard will auto pre-populate the newest datetime in the box ,To DateTime input box, and picks a SG DB.
 
-It will pre-populate the newest datetime in the box and pick a SG DB.
-
-Just click the Button(Search).
-
+Just click the Button(Search) you should get some results.
 
 
+###FAQ
+**Q:** What version of Python do I need?
 
-FAQ
-
-**A:**
-
--Python 3.6+ installed 
-
--Have a Couchbase Server with Data , Index & Query
-
+**A:** Python 3.6+ 
 
 **Q:** Is there any configuration to the script?
 
+**A:** Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket
 
-**A:**
 
-Yes, there is a config.json file that you can update with things like creditals to a Couchbase bucket
+**Q:** What version of Sync Gateway logs will it work on?
+
+**A:** Its been testing with Sync Gateway version 2.8.x to 3.0.1. 
+
+###NOTES
+
+-- Its advised to "Flush" the Couchbase Bucket for each new SG environments you process.
+
+-- Logs from a Sync Gateway machine running on MS Windows might have issues as its timestamps in the logs might have a different format thus effecting the processing of Sync Gateway file.
+
+
 
 Works on My Computer Tested & Certified ;-)
