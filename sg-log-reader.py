@@ -23,7 +23,6 @@ import pstats
 import hashlib
 
 
-
 class work():
 
 	debug = False
@@ -47,6 +46,7 @@ class work():
 	logLineDepthPercent = 0.02
 	logNumberOflines = 1
 	logScanDepthAfterClose = 50
+	cbTtl = 86400
 
 
 
@@ -89,6 +89,7 @@ class work():
 		self.debug = b["debug"]
 		self.sgDtLineOffset = b["dt-log-line-offset"]
 		self.sgLogTag = b["log-name"]
+		self.cbTtl = b['cb-expire']
 		a.close()
 
 	def openSgLogFile(self):
@@ -212,11 +213,8 @@ class work():
 			if self.debug == True:
 				ic(x,z)
 			else:
-				try:
-					self.cbColl.upsert(z[0],z[1])
-				except CouchbaseException:
-					ic(traceback.format_exc())
-					ic("Error: Update of Key: ",x)
+				self.cbUpsert(z[0],z[1],self.cbTtl)
+
 
 		print("Done - Per wsId : ",datetime.datetime.now())
 
@@ -373,7 +371,6 @@ class work():
 				if "Type:getAttachment Digest:" in x:		
 					pullAttCount += 1
 					continue
-
 				if " 409 Document update conflict " in x:
 					conflictCount += 1
 					continue
@@ -391,7 +388,6 @@ class work():
 				if "Added attachment" in x and "CRUD:" in x:
 					pushAttachCount +=1
 					continue
-
 
 			else:
 				passIt += 1
@@ -430,26 +426,35 @@ class work():
 		if "==== Couchbase Sync Gateway/" in x:
 			t = self.getTimeFromLine(x)
 			d = {"docType":"sgStart","dt":t[0],"tag":self.sgLogTag}
-			try:
-				self.cbColl.upsert(self.sgLogTag+"::sgStart::"+t[0],d)
-			except CouchbaseException:
-				ic(traceback.format_exc())
-				ic("Error: Update of Key: ",self.sgLogTag+"::sgStart::"+t[0])
+			self.cbUpsert(self.sgLogTag+"::sgStart::"+t[0],d,self.cbTtl)
+
 
 	def dcpChecks(self,x):
 		if "DCP: OnError:" in x:
 			t = self.getTimeFromLine(x)
 			d = {"docType":"dcpError","dt":t[0] ,"count":1,"tag":self.sgLogTag}
 
+			#self.cbUpsert(self.sgLogTag+"::sgStart::"+t[0],d,self.cbTtl)
+			#self.cbSubDocAppend(key,value,data,ttl=0):
+
+			self.cbSubDocInsert(self.sgLogTag+"::dcpErorr::"+t[0],"count",d["count"]+1,self.cbTtl)
+			
+			"""
 			try:
-				self.cbColl.mutate_in(self.sgLogTag+"::dcpErorr::"+t[0], SD.upsert("count",d["count"]+1))
-			except DocumentNotFoundException:
-				r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
+				r = self.cbColl.mutate_in(self.sgLogTag+"::dcpErorr::"+t[0], SD.upsert("count",d["count"]+1))
 				ic(r)
+				return r
+			except DocumentNotFoundException:
+				r = self.cbInsert(self.sgLogTag+"::query::"+t[0],d,self.cbTtl)
+				ic(r)
+				return r
 			except CouchbaseException:
 				ic(traceback.format_exc())
 				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
-				self.cbColl.insert(self.sgLogTag+"::dcpErorr::"+t[0],d)
+				r = self.cbInsert(self.sgLogTag+"::dcpErorr::"+t[0],d,self.cbTtl)
+				return r			
+			"""
+
 
 	def importCheck(self,x):
 		if " Import" in x:
@@ -479,16 +484,24 @@ class work():
 			b = self.n1qlTimeSplit(a[6])
 			c = {"q":a[4],"t":a[6],"dt":t[0],"tChop":b,"tag":self.sgLogTag}
 			d = {"docType":"query", "q":[c]}
-
 			ic(b)
+			self.cbSubDocAppend(self.sgLogTag+"::query::"+t[0] ,'q' ,b, self.cbTtl)
+
+			"""
 			try:
-				t = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
-			except DocumentNotFoundException:
-				r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
+				r = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
 				ic(r)
+				return r
+			except DocumentNotFoundException:
+				r = self.cbInsert(self.sgLogTag+"::query::"+t[0],d,self.cbTtl)
+				ic(r)
+				return r
 			except CouchbaseException:
 				ic(traceback.format_exc())
 				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+			
+			"""
+
 
 
 		if "Channel query" in x:
@@ -498,15 +511,25 @@ class work():
 			b = self.n1qlTimeSplit(a[5])
 			c = {"q":a[3],"t":int(a[8]),"chan":a[12],"dt":t[0],"st":a[14],"end":a[16],"tChop":b,"tag":self.sgLogTag}
 			d = {"docType":"query", "q":[c]}
-			
+
+			self.cbSubDocAppend(self.sgLogTag+"::query::"+t[0] ,'q' ,b, self.cbTtl)
+
+			"""
 			try:
-				t = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
+				r = self.cbColl.mutate_in(self.sgLogTag+"::query::"+t[0], (SD.array_append('q',b),))
+				ic(r)
+				return r
 			except DocumentNotFoundException:
-					r = self.cbColl.insert(self.sgLogTag+"::query::"+t[0],d)
+					r = self.cbInsert(self.sgLogTag+"::query::"+t[0],d,self.cbTtl)
 					ic(r)
+					return r
 			except CouchbaseException:
 				ic(traceback.format_exc())
 				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
+				return			
+			
+			"""		
+
 						
 	def n1qlTimeSplit(self,qTime):
 		d = {"m":0,"s":0,"ms":0}
@@ -553,15 +576,10 @@ class work():
 				else:
 					b.update({id1:{"repId":str(a[1]),"docType":"replicate","since":since,"getChk":0,"setChk":0,"error":0,"dt":t[0],"tag":self.sgLogTag}})
 		for y in b:
-			try:
-				self.cbColl.upsert(y,b[y])
-			except CouchbaseException:
-				ic(traceback.format_exc())
-				ic("Error: Upsert Key:",y)
+			self.cbUpsert(y,b[y],self.cbTtl)
 
 	def replicatorId(self,line):
 		return re.findall(r"\[([A-Za-z0-9_-]+)\]",line)
-
 
 	def findSince(self,line):
 		pattern = r'Since:(\S+)'
@@ -621,21 +639,75 @@ class work():
 		return False
 	
 	def cbInsert(self,key,doc,ttl=0):
-		return
-	
-	def cbGet(self,key):
-		return
-
-	def cbAppendArray(self,key,value,data,ttl=0):
-		return
-	
+		opts = InsertOptions(timeout=timedelta(seconds=5))
+		try:
+			r = self.cbColl.insert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			ic(r)
+			return r
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			ic("Error: Insert Key: ",key)
+			return False
+		
 	def cbUpsert(self,key,doc,ttl=0):
 		opts = InsertOptions(timeout=timedelta(seconds=5))
 		try:
-			self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			r = self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			ic(r)
+			return r
 		except CouchbaseException:
 			ic(traceback.format_exc())
-			ic("Error: Upsert Key:",key)
+			ic("Error: Upsert Key: ",key)
+			return False	
+		
+	def cbGet(self,key):
+		try:
+			r = self.cbColl.get(key)
+			ic(r)
+			return r
+		except DocumentNotFoundException:
+			return False
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			ic("Error: Getting Key: ", key)
+			return False
+	
+	def cbSubDocAppend(self,key,value,data,ttl=0):
+		try:
+			r = self.cbColl.mutate_in(key, SD.upsert(value,data),)
+			ic(r)
+			return r
+		except DocumentNotFoundException:
+			return False
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			ic("Error: SubDoc Array Append for: ", key)
+			return False
+		
+	def cbSubDocInsert(self,key,value,data,ttl=0):
+		try:
+			r = self.cbColl.mutate_in(key, SD.insert(value,data),)
+			ic(r)
+			return r
+		except DocumentNotFoundException:
+			return False
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			ic("Error: SubDoc Insert for: ", key)
+			return False
+
+	def cbSubDocFind(self,key,value):		
+		try:
+			r = self.cbColl.lookup_in(key, SD.get(value))
+			ic(r)
+			return r
+		except DocumentNotFoundException:
+			return False
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			ic("Error: SubDoc Get for: ",key)
+			return False
+
 		
 
 
