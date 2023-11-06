@@ -90,3 +90,6 @@ CREATE INDEX `userSyncFinder_v5` ON `sg-log-reader`(`dt`,`user`,`sgDb`,`dtDiffSe
 CREATE INDEX `userSyncFinder_v6` ON `sg-log-reader`(`dt`,`user`,`sgDb`,`dtDiffSec`,`sentCount`,`errors`,`tRow`,`since`,ARRAY_LENGTH(`filterBy`),`conflicts`,`pushAttCount`,`pullAttCount`,`pushCount`,`qRow`,`cRow`,`blipC`) WHERE ((`docType` = "byWsId") and (`orphane` = false))
 
 u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` 
+
+
+CREATE INDEX `sgProcessErrors_v3` ON `sg-log-reader`(`dt`,`import`,`dcp`,`query`) WHERE (`docType` = "sgErrors")

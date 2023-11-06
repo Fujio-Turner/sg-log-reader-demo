@@ -104,10 +104,10 @@ class work():
 			ic(x)
 			line = x.rstrip('\r|\n')
 			bigOne.append(line)
-			#self.importCheck(line)
-			#self.n1qlQueryInfo(line)
+			self.importCheck(line)
+			self.sqlCheck(line)
 			#self.replicateCheck(line)
-			#self.dcpChecks(line)
+			self.dcpChecks(line)
 			#self.sgStarts(line)
 			if self.wasBlipLines == True:
 				ic(line)
@@ -430,38 +430,43 @@ class work():
 
 
 	def dcpChecks(self,x):
-		if "DCP: OnError:" in x:
+		if "DCP:" in x:
 			t = self.getTimeFromLine(x)
-			d = {"docType":"dcpError","dt":t[0] ,"count":1,"tag":self.sgLogTag}
-
-			#self.cbUpsert(self.sgLogTag+"::sgStart::"+t[0],d,self.cbTtl)
-			#self.cbSubDocAppend(key,value,data,ttl=0):
-
-			self.cbSubDocInsert(self.sgLogTag+"::dcpErorr::"+t[0],"count",d["count"]+1,self.cbTtl)
-			
-			"""
-			try:
-				r = self.cbColl.mutate_in(self.sgLogTag+"::dcpErorr::"+t[0], SD.upsert("count",d["count"]+1))
-				ic(r)
-				return r
-			except DocumentNotFoundException:
-				r = self.cbInsert(self.sgLogTag+"::query::"+t[0],d,self.cbTtl)
-				ic(r)
-				return r
-			except CouchbaseException:
-				ic(traceback.format_exc())
-				ic("Error: Inserting Key: ","sgStart::"+t," maybe already in bucket")
-				r = self.cbInsert(self.sgLogTag+"::dcpErorr::"+t[0],d,self.cbTtl)
-				return r			
-			"""
-
+			if "error" in x:
+				ic(t[0],x)
+				e = self.errorTempDoc(t[0],"dcp")
+				print(e)
 
 	def importCheck(self,x):
-		if " Import" in x:
+		if "Import:" in x:
 			t = self.getTimeFromLine(x)
-			if "error during importDoc" in x:
+			if "error" in x:
 				ic(t[0],x)
-				return
+				r = self.errorTempDoc(t[0],"import")
+				return r
+	
+	def sqlCheck(self,x):
+		if "Query:" in x:
+			t = self.getTimeFromLine(x)
+			if "error" in x:
+				ic(t[0],x)
+				r = self.errorTempDoc(t[0],"query")
+				return r			
+
+	def errorTempDoc(self,dt,errorElement):
+		key = dt + "::errors"
+		d = self.cbGet(key)
+		if d != False:
+			#Check if doc exists
+			d[errorElement] += 1
+			e = self.cbUpsert(key,d,self.cbTtl)
+			return e
+		else:
+			#if not create Template
+			j = {"docType":"sgErrors","dt":dt,"import":0,"dcp":0,"query":0}
+			j[errorElement] += 1
+			f = self.cbInsert(key,j,self.cbTtl)
+			return f
 
 	def findSentCount(self,x):
 		a = x.split(" ")
@@ -639,9 +644,10 @@ class work():
 		return False
 	
 	def cbInsert(self,key,doc,ttl=0):
-		opts = InsertOptions(timeout=timedelta(seconds=5))
+		#opts = InsertOptions(timeout=timedelta(seconds=5))
 		try:
-			r = self.cbColl.insert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			#r = self.cbColl.insert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			r = self.cbColl.insert(key,doc,expiry=timedelta(seconds=ttl))
 			ic(r)
 			return r
 		except CouchbaseException:
@@ -650,9 +656,10 @@ class work():
 			return False
 		
 	def cbUpsert(self,key,doc,ttl=0):
-		opts = InsertOptions(timeout=timedelta(seconds=5))
+		#opts = InsertOptions(timeout=timedelta(seconds=5))
 		try:
-			r = self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			#r = self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
+			r = self.cbColl.upsert(key,doc,expiry=timedelta(seconds=ttl))
 			ic(r)
 			return r
 		except CouchbaseException:
@@ -662,7 +669,8 @@ class work():
 		
 	def cbGet(self,key):
 		try:
-			r = self.cbColl.get(key)
+			result = self.cbColl.get(key)
+			r = result.content_as[dict]
 			ic(r)
 			return r
 		except DocumentNotFoundException:
@@ -743,11 +751,11 @@ if __name__ == "__main__":
 	#a.dcpChecks()
 
 	##5.n1ql-Query-times
-	#a.n1qlQueryInfo()
+	#a.sqlCheck()
 
 	##6.Golang-errors
 
-	##7.Imports
-	##a.importCheck()
+	##7.Imports -- Completed
+	##a.importCheck() -- Completed
 	##8. SG-Replicate
 	#a.replicateCheck()
