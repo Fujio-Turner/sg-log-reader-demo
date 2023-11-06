@@ -107,7 +107,10 @@ class work():
 			q = q + ' SUBSTR(u.`dt`,1,15) as `dt`, COUNT(SUBSTR(u.`dt`,1,15)) as `dtCount`, SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
 
 		else:
-			q = q + ' u.`dt`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
+			if rangeData["pie"] and rangeData["pie"] == True:
+				q = q + '  u.`tRow`, u.`sentCount` , u.`since` ,u.`cRow` , u.`qRow` ' 
+			else: 
+				q = q + ' u.`dt`, 1 as `dtCount` , u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
 
 		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
 		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
@@ -125,7 +128,7 @@ class work():
 			q = q + ' AND u.`sentCount` = u.`tRow` '
 
 		if rangeData["syncResult"] and rangeData["syncResult"] == "nonFull":
-			q = q + ' AND u.`sentCount` != u.`tRow` '
+			q = q + ' AND u.`sentCount` != u.`tRow` AND u.`sentCount` > 0 '
 
 		if rangeData["syncResult"] and rangeData["syncResult"] == "no":
 				q = q + ' AND u.`sentCount` = 0 '
@@ -149,10 +152,10 @@ class work():
 			q = q + ' AND u.`pullAttCount` > 0 '
 
 		if rangeData["syncTime"]:
-			q = q + ' AND u.`dtDiffSec` >= TONUMBER('+rangeData["syncTime"]+') '
+			q = q + ' AND u.`dtDiffSec` >= '+rangeData["syncTime"]+' '
 
 		if rangeData["changeCount"] :
-			q = q + ' AND u.`tRow` >= TONUMBER('+rangeData["changeCount"]+') '
+			q = q + ' AND u.`tRow` >= '+rangeData["changeCount"]+' '
 
 		if 'user' not in rangeData or not rangeData["user"]:
 			q = q + ' AND u.`user` IS NOT MISSING '
@@ -214,7 +217,7 @@ class work():
 				q = q + ' AND u.`sentCount` = u.`tRow` '
 
 			if rangeData["syncResult"] and rangeData["syncResult"] == "nonFull":
-				q = q + ' AND u.`sentCount` != u.`tRow` '
+				q = q + ' AND u.`sentCount` != u.`tRow` AND u.`sentCount` > 0 '
 
 			if rangeData["syncResult"] and rangeData["syncResult"] == "no":
 				q = q + ' AND u.`sentCount` = 0 '
@@ -293,7 +296,7 @@ class work():
 			q = q + ' AND u.`sentCount` = u.`tRow` '
 
 		if rangeData["syncResult"] and rangeData["syncResult"] == "nonFull":
-			q = q + ' AND u.`sentCount` != u.`tRow` '
+			q = q + ' AND u.`sentCount` != u.`tRow` AND u.`sentCount` > 0 '
 
 		if rangeData["syncResult"] and rangeData["syncResult"] == "no":
 				q = q + ' AND u.`sentCount` = 0 '

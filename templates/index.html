@@ -129,7 +129,7 @@ border-radius: 15px;
           <button id="search" class="search">Search</button>
           <label for="resultSize">  Number of Results: </label><b><span id="resultSize" name="ResultSize" ></span></b>
           </br>
-          <label for="viewBy">graph's x-axis view by: </label>
+          <label for="viewBy">X-axis view/group by: </label>
           <select name="viewBy" id="viewBy">
             <option value="">All Entries</option>
             <option value="sec" selected="selected">Seconds</option>
@@ -156,8 +156,8 @@ border-radius: 15px;
             <select name="syncResult" id="syncResult">
               <option value="any" selected="selected">Pulled: Any Result</option>
               <option value="full">Pulled: All Docs/Full Sync</option>
-              <option value="nonFull">Pulled: Missing / Zero Docs</option>
-              <option value="no">Pulled: Zero Docs Only</option>
+              <option value="nonFull">Pulled: Missing Docs Only</option>
+              <option value="no">Pulled: No New Docs Only</option>
             </select>
 
             <select name="noPushes" id="noPushes">
@@ -499,6 +499,7 @@ function sgUserList(){
     }else{
     data1["viewBy"] = $('#viewBy').val();
     }
+    data1['pie'] = false;
  
 
       $.ajax({
@@ -520,6 +521,53 @@ function sgUserList(){
         contentType:'application/json; charset=utf-8',
         success: function(data3) { 
          makeChartDiffSecStat(data3)
+        }
+    });
+
+}
+
+function bigSearchPie(){
+
+  var from = $('#dtFrom').val();
+    var to = $('#dtTo').val();
+    if(from ==="" && to === ""){
+      $.notify("Pick a Date Range");
+      return
+    }
+
+    if(sgName === ""){
+      $.notify("Pick a SG DB");
+      return
+    }
+
+    var data1 = {}
+    data1["sgDb"] = $('#sgDbListOptions').val()
+    data1['startDt'] = from
+    data1['endDt'] = to
+    data1["user"] = $('#searchByUser').val()
+    data1["syncResult"] = $("#syncResult").val();
+    data1["changeCount"] = $('#changeCount').val()
+    data1["syncTime"] = $('#syncTime').val()
+    data1["filterByChannels"] = $('#filterByChannels').is(":checked");
+    data1["conflicts"] = $('#conflicts').is(":checked");
+    data1["sinceZero"] = $('#sinceZero').is(":checked");
+    data1["errors"] = $('#errors').is(":checked");
+    data1["noPushes"] = $('#noPushes').val();
+    data1["attachments"] = $('#hasAttachments').is(":checked")
+    data1["attachmentsPull"] = $('#hasPullAttachments').is(":checked")
+    data1["viewBy"] = ""
+    data1['pie'] = true;
+
+
+    $.ajax({
+        type: 'POST',
+        url: '/dateRange',
+        data: JSON.stringify(data1),
+        dataType: 'json',
+        contentType:'application/json; charset=utf-8',
+        success: function(data2) { 
+            //console.log(data2)            
+           makeChartPie(data2)
         }
     });
 
@@ -590,20 +638,15 @@ function  makeChartDiffSecStat(data){
 
 function makeChart(data){
 
-  if(typeof c1 !== 'undefined' || typeof c2 !== 'undefined' || typeof c3 !== 'undefined'|| typeof c4 !== 'undefined' || typeof c5 !== 'undefined'){
-         c1.destroy(); c2.destroy(); c3.destroy(); c4.destroy(); c5.destroy(); 
+  if(typeof c1 !== 'undefined' || typeof c2 !== 'undefined'){
+         c1.destroy(); c2.destroy(); 
         }
    $('#resultSize').html('');
    $('#userSyncStats').empty();
  var ctx1 = document.getElementById('myChart1');
-
  var ctx2 = document.getElementById('myChart2');
 
- var ctx3 = document.getElementById('myChart3');
 
- var ctx4 = document.getElementById('myChart4');
-
- var ctx5 = document.getElementById('myChart5');
 
 
   var valuesChangesCache = [];
@@ -619,12 +662,6 @@ function makeChart(data){
   var valuesPullAttachments = []
   var valuesPushAttCount = []
   var valuesPushCount = []
-  var userSyncAllTrue = 0
-  var userSyncAllFalse = 0
-  var sinceZeroTrue = 0
-  var sinceZeroFalse = 0
-  var channelCache = 0
-  var channelQuery = 0
   var resultShow = 0
   var countNoProblems = 0
   var countErrors = 0
@@ -643,8 +680,7 @@ function makeChart(data){
   }
 
   $.each(data, function(key, value) {   
-    
-    resultShow = resultShow + 1    
+    resultShow = resultShow + value.dtCount   
     valuesErrors.push(value.errors)
     valuesChangesCache.push(value.cRow)
     valuesChangesQuery.push(value.qRow)
@@ -657,27 +693,6 @@ function makeChart(data){
     valuesPushAttCount.push(value.pushAttCount)
     valuesPushCount.push(value.pushCount)
     labelsJ.push(value.dt.substring(11)) 
-
-
-      if(typeof value.cRow !== 'undefined'){
-        channelCache = channelCache + value.cRow
-      } 
-
-      if(typeof value.qRow !== 'undefined'){
-      channelQuery = channelQuery + value.qRow  
-      } 
-
-    if(value.tRow == value.sentCount){
-      userSyncAllTrue = userSyncAllTrue + 1
-    }else{
-      userSyncAllFalse = userSyncAllFalse + 1
-    }
-
-    if( value.since == '0' || value.since == 0){
-      sinceZeroTrue =  sinceZeroTrue + 1
-    } else{
-      sinceZeroFalse =  sinceZeroFalse + 1
-    }
   });
 
 
@@ -824,154 +839,207 @@ function makeChart(data){
   });
 
 
-  const optionsPie1 = {
-    tooltips:{
-                  enabled: true
-                },
-    responsive: true,
-   maintainAspectRatio: false,
-    plugins: { 
-       title: {
-               display: true,
-              text: '_changes Sent VS Docs Pulled'
-              },
-      legend: {
-        position: 'top'
-      },
-      datalabels: {
-        display: 'auto',
-        color: 'black',
-        font: {
-          weight: 'bold'
-        },
-        formatter: (value, ctx3) => {
-          const total = ctx3.chart.getDatasetMeta(0).total;
-          let percentage = (value * 100 / total).toFixed(1) + "%";
-          return percentage + ' (' + value + ')';
-        },
-      }
-    }
-  }
-
-
- c3 = new Chart(ctx3, {
-    type: 'pie',
-    data: {
-      labels: ['Docs Pulled',"Missing or Zero Docs"],
-      datasets: [
-                {
-                  data:[userSyncAllTrue,userSyncAllFalse],
-                  backgroundColor: [
-                                    '#00CF9B',
-                                    '#E55B5E'
-                                    ]
-                }
-                ]
-    },
-    options: optionsPie1,
-    plugins:[ChartDataLabels]
-      });
-
-    const optionsPie2 = {
-    tooltips:{
-                  enabled: true
-                },
-    responsive: true,
-   maintainAspectRatio: false,
-    plugins: { 
-       title: {
-               display: true,
-              text: 'Start from Zero (new) VS Old Sync'
-              },
-      legend: {
-        position: 'top'
-      },
-      datalabels: {
-        display: 'auto',
-        color: 'black',
-        font: {
-          weight: 'bold'
-        },
-        formatter: (value, ctx4) => {
-          const total = ctx4.chart.getDatasetMeta(0).total;
-          let percentage = (value * 100 / total).toFixed(1) + "%";
-          return percentage + ' (' + value + ')';
-        },
-      }
-    }
-  }
-
-      c4 = new Chart(ctx4, {
-    type: 'pie',
-    data: {
-      labels: ["New Sync (since=0)","Old Sync"],
-      datasets: [
-                  {
-                    data:[sinceZeroTrue,sinceZeroFalse],
-                    backgroundColor: [
-                                      '#3366ff',
-                                      '#ff9900'
-                                      ]
-                  }
-                ]
-    },
-    options: optionsPie2,
-    plugins:[ChartDataLabels]
-      });
-
-
-
-    const optionsPie3 = {
-    tooltips:{
-                  enabled: true
-                },
-    responsive: true,
-   maintainAspectRatio: false,
-    plugins: { 
-       title: {
-               display: true,
-              text: '_changes: Cache Hit VS SQL++ Query'
-              },
-      legend: {
-        position: 'top'
-      },
-      datalabels: {
-        display: 'auto',
-        color: 'black',
-        font: {
-          weight: 'bold'
-        },
-        formatter: (value, ctx5) => {
-          const total = ctx5.chart.getDatasetMeta(0).total;
-          let percentage = (value * 100 / total).toFixed(1) + "%";
-          return percentage;
-        },
-      }
-    }
-  }
-
-
-      c5 = new Chart(ctx5, {
-    type: 'pie',
-    data: {
-      labels: ["Cache Hit","SQL++ Query"],
-      datasets: [
-                  {
-                    data:[channelCache,channelQuery],
-                    backgroundColor: [
-                                      '#00CF9B',
-                                      '#cc33ff'
-                                      ]
-                  }
-                ]
-    },
-    options: optionsPie3,
-    plugins:[ChartDataLabels]
-      });
-
       $('#resultSize').html(resultShow.toLocaleString());
 
     }
+
+function makeChartPie(data){
+
+if(typeof c3 !== 'undefined'|| typeof c4 !== 'undefined' || typeof c5 !== 'undefined' ){
+       c3.destroy(); c4.destroy(); c5.destroy();
+      }
+
+var ctx3 = document.getElementById('myChart3');
+var ctx4 = document.getElementById('myChart4');
+var ctx5 = document.getElementById('myChart5');
+
+var userSyncAllTrue = 0
+var userSyncAllFalse = 0
+var sinceZeroTrue = 0
+var sinceZeroFalse = 0
+var channelCache = 0
+var channelQuery = 0
+
+
+var tFrom = new Date( $("#dtFrom").val());
+var xAxisStart = Math.floor(tFrom.getTime() / 1000);
+
+var tTo= new Date( $("#dtTo").val())
+var xAxisEnd =  Math.floor(tTo.getTime() / 1000);
+
+
+$.each(data, function(key, value) {   
+
+    if(typeof value.cRow !== 'undefined'){
+      channelCache = channelCache + value.cRow
+    } 
+
+    if(typeof value.qRow !== 'undefined'){
+    channelQuery = channelQuery + value.qRow  
+    } 
+
+    if(value.tRow == value.sentCount){
+      userSyncAllTrue = userSyncAllTrue + 1
+    }else{
+      userSyncAllFalse = userSyncAllFalse + 1
+    }
+
+    if( value.since == '0' || value.since == 0){
+      sinceZeroTrue =  sinceZeroTrue + 1
+    } else{
+      sinceZeroFalse =  sinceZeroFalse + 1
+    }
+});
+
+
+
+const optionsPie1 = {
+  tooltips:{
+                enabled: true
+              },
+  responsive: true,
+ maintainAspectRatio: false,
+  plugins: { 
+     title: {
+             display: true,
+            text: '_changes Sent VS Docs Pulled'
+            },
+    legend: {
+      position: 'top'
+    },
+    datalabels: {
+      display: 'auto',
+      color: 'black',
+      font: {
+        weight: 'bold'
+      },
+      formatter: (value, ctx3) => {
+        const total = ctx3.chart.getDatasetMeta(0).total;
+        let percentage = (value * 100 / total).toFixed(1) + "%";
+        return percentage + ' (' + value + ')';
+      },
+    }
+  }
+}
+
+
+c3 = new Chart(ctx3, {
+  type: 'pie',
+  data: {
+    labels: ['Docs Pulled',"Missing or Zero Docs"],
+    datasets: [
+              {
+                data:[userSyncAllTrue,userSyncAllFalse],
+                backgroundColor: [
+                                  '#00CF9B',
+                                  '#E55B5E'
+                                  ]
+              }
+              ]
+  },
+  options: optionsPie1,
+  plugins:[ChartDataLabels]
+    });
+
+  const optionsPie2 = {
+  tooltips:{
+                enabled: true
+              },
+  responsive: true,
+ maintainAspectRatio: false,
+  plugins: { 
+     title: {
+             display: true,
+            text: 'Start from Zero (new) VS Old Sync'
+            },
+    legend: {
+      position: 'top'
+    },
+    datalabels: {
+      display: 'auto',
+      color: 'black',
+      font: {
+        weight: 'bold'
+      },
+      formatter: (value, ctx4) => {
+        const total = ctx4.chart.getDatasetMeta(0).total;
+        let percentage = (value * 100 / total).toFixed(1) + "%";
+        return percentage + ' (' + value + ')';
+      },
+    }
+  }
+}
+
+    c4 = new Chart(ctx4, {
+  type: 'pie',
+  data: {
+    labels: ["New Sync (since=0)","Old Sync"],
+    datasets: [
+                {
+                  data:[sinceZeroTrue,sinceZeroFalse],
+                  backgroundColor: [
+                                    '#3366ff',
+                                    '#ff9900'
+                                    ]
+                }
+              ]
+  },
+  options: optionsPie2,
+  plugins:[ChartDataLabels]
+    });
+
+
+
+  const optionsPie3 = {
+  tooltips:{
+                enabled: true
+              },
+  responsive: true,
+ maintainAspectRatio: false,
+  plugins: { 
+     title: {
+             display: true,
+            text: '_changes: Cache Hit VS SQL++ Query'
+            },
+    legend: {
+      position: 'top'
+    },
+    datalabels: {
+      display: 'auto',
+      color: 'black',
+      font: {
+        weight: 'bold'
+      },
+      formatter: (value, ctx5) => {
+        const total = ctx5.chart.getDatasetMeta(0).total;
+        let percentage = (value * 100 / total).toFixed(1) + "%";
+        return percentage;
+      },
+    }
+  }
+}
+
+
+    c5 = new Chart(ctx5, {
+  type: 'pie',
+  data: {
+    labels: ["Cache Hit","SQL++ Query"],
+    datasets: [
+                {
+                  data:[channelCache,channelQuery],
+                  backgroundColor: [
+                                    '#00CF9B',
+                                    '#cc33ff'
+                                    ]
+                }
+              ]
+  },
+  options: optionsPie3,
+  plugins:[ChartDataLabels]
+    });
+
+ 
+  }
 
 
   function makeUserDetails(data){
@@ -1109,6 +1177,7 @@ function userFill(username){
 $("#search").click(function(e){
     sgUserList();
     bigSearch();
+    bigSearchPie();
   });
 </script>  
 </body>
