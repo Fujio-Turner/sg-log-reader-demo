@@ -708,9 +708,6 @@ class work():
 			ic("Error: SubDoc Get for: ",key)
 			return False
 
-		
-
-
 if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		configFile = sys.argv[1]
@@ -732,8 +729,6 @@ if __name__ == "__main__":
 	
 	##bootstrap reads config.json and loads logfile into memory to read
 	
-
-
 	##1.HTTP Logs
 
 	##2a.WS-ID-per-user-list      -- Completed
