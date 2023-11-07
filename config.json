@@ -1,6 +1,6 @@
 {
 "log-name":"test-today-node-0",
-"file-to-parse":"sg_info.log",	
+"file-to-parse":"/Users/fujio.turner/Downloads/cb-sg/couchbase-sync-gateway-3.1.0-ga/logs/sg_info.log",	
 "cb-cluster-host":"127.0.0.1",
 "cb-bucket-name":"sg-log-reader",
 "cb-bucket-user":"Administrator",

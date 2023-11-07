@@ -368,7 +368,7 @@ class work():
 					passIt = self.logLineDepthLevel - self.logScanDepthAfterClose
 					blipClosed = True
 					continue
-				if "Upgraded to BLIP+WebSocket protocol" in x:
+				if "Upgraded to" in x and  "WebSocket protocol" in x:
 					blipOpened = True
 					continue
 				if " changes to client, from seq " in x:		
@@ -381,7 +381,7 @@ class work():
 				if "Type:getAttachment Digest:" in x:		
 					pullAttCount += 1
 					continue
-				if " 409 Document update conflict " in x:
+				if "409 Document update conflict" in x:
 					conflictCount += 1
 					continue
 				if "[ERR]" in x or "Error retrieving changes for channel" in x:
@@ -418,9 +418,6 @@ class work():
 		
 		if match:
 			return [int(a[8]),match.group(1)]
-		else:
-			print("no Match")
-			print(a)
 		
 		c = b[1].split('"')
 		

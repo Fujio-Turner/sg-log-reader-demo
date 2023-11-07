@@ -104,7 +104,7 @@ class work():
 		
 		elif rangeData["viewBy"] and rangeData["viewBy"] == "min" :
 		
-			q = q + ' SUBSTR(u.`dt`,1,15) as `dt`, COUNT(SUBSTR(u.`dt`,1,15)) as `dtCount`, SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
+			q = q + ' SUBSTR(u.`dt`,0,16) as `dt`, COUNT(SUBSTR(u.`dt`,1,15)) as `dtCount`, SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
 
 		else:
 			if rangeData["pie"] and rangeData["pie"] == True:
@@ -166,8 +166,8 @@ class work():
 			q = q + ' GROUP BY u.`dt` '
 
 		if rangeData["viewBy"] and rangeData["viewBy"] == "min":
-			q = q + ' GROUP BY SUBSTR(u.`dt`,1,15) '
-			q = q + ' ORDER BY SUBSTR(u.`dt`,1,15) ASC '
+			q = q + ' GROUP BY SUBSTR(u.`dt`,0,16) '
+			q = q + ' ORDER BY SUBSTR(u.`dt`,0,16) ASC '
 		else:
 			q = q + ' ORDER BY u.`dt` ASC '
 
@@ -352,9 +352,30 @@ class work():
 
 	def sgErrors(self,rangeData):
 
-		q = 'SELECT e.`dt` , e.`query` , e.`dcp` , e.`import` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as e WHERE e.`docType` = "sgErrors" '
+		q = 'SELECT ' 
+
+		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
+		
+			q = q + ' e.`dt`, COUNT(e.`dt`) as `dtCount` , SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import`  ' 
+		
+		elif rangeData["viewBy"] and rangeData["viewBy"] == "min" :
+		
+			q = q + ' SUBSTR(e.`dt`,0,16) as `dt`, COUNT(SUBSTR(e.`dt`,1,15)) as `dtCount`, SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import`  ' 
+		else:
+			q = q + ' e.`dt` , e.`query` , e.`dcp` , e.`import` ' 
+
+		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as e WHERE e.`docType` = "sgErrors" '
 		q = q + ' AND e.`dt` BETWEEN $startDt AND $endDt ' 
-		q = q + ' ORDER BY e.`dt` ASC '
+
+		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
+			q = q + ' GROUP BY e.`dt` '
+
+		if rangeData["viewBy"] and rangeData["viewBy"] == "min":
+			q = q + ' GROUP BY SUBSTR(e.`dt`,0,16) '
+			q = q + ' ORDER BY SUBSTR(e.`dt`,0,16) ASC '
+		else:
+			q = q + ' ORDER BY e.`dt` ASC '
+
 		ic(q)
 		data = []
 		try:

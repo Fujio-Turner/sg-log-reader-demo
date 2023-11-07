@@ -469,10 +469,16 @@ function sgUserList(){
 
     var from = $('#dtFrom').val();
     var to = $('#dtTo').val();
+    
 
     var data1 = {}
     data1['startDt'] = from
     data1['endDt'] = to
+    if($('#searchByUser').val() !== ""){
+      data1["viewBy"] = ""
+    }else{
+    data1["viewBy"] = $('#viewBy').val();
+    }
 
     $.ajax({
         type: 'POST',
@@ -481,8 +487,7 @@ function sgUserList(){
         dataType: 'json',
         contentType:'application/json; charset=utf-8',
         success: function(data2) { 
-          console.log(data2)
-          //addIntoMainChart(data2)
+          addIntoMainChart(data2)
         }
     });
 
@@ -491,20 +496,24 @@ function sgUserList(){
 
   function addIntoMainChart(data2){
 
-    valuesErrorCount = []
+    var valuesErrorCount = []
 
-    $.each(data, function(key, value) {  
-        valuesErrorCount.push(value.query + value.dcp + value.import)
-        labelsJ.push(value.tRange.substring(4)) 
-        });
-
-    c1.data.datasets.push({
+    var newDataset =   {
       label: "SG Process Errors",
-      backgroundColor: '#2F2F2F',
-      data:valuesErrorCount
-    });
+      backgroundColor: '#5E5E5E',
+      borderWidth: 1,
+      data:[]
+    }
 
-    c1.update()
+    $.each(data2, function(key, value) {  
+        var tErrors = value.query + value.dcp + value.import
+        var gTime = value.dt
+        newDataset.data.push([gTime,tErrors])
+        });
+      
+    c1.config.data.datasets.push(newDataset);
+    c1.update();
+  
   }
 
 
@@ -609,8 +618,7 @@ function bigSearchPie(){
         data: JSON.stringify(data1),
         dataType: 'json',
         contentType:'application/json; charset=utf-8',
-        success: function(data2) { 
-            //console.log(data2)            
+        success: function(data2) {           
            makeChartPie(data2)
         }
     });
@@ -724,19 +732,20 @@ function makeChart(data){
   }
 
   $.each(data, function(key, value) {   
+    var gTime = value.dt
     resultShow = resultShow + value.dtCount   
-    valuesErrors.push(value.errors)
-    valuesChangesCache.push(value.cRow)
-    valuesChangesQuery.push(value.qRow)
-    valuesSyncTime.push(value.dtDiffSec)
-    valuesConflicts.push(value.conflicts)
-    valuesSent.push(value.sentCount)
-    valuesChangesSent.push(value.tRow)
-    valuesSentVsChangesSent.push(value.sent/value.tRow)
-    valuesPullAttachments.push(value.pullAttCount)
-    valuesPushAttCount.push(value.pushAttCount)
-    valuesPushCount.push(value.pushCount)
-    labelsJ.push(value.dt.substring(11)) 
+    valuesErrors.push([gTime,value.errors])
+    valuesChangesCache.push([gTime,value.cRow])
+    valuesChangesQuery.push([gTime,value.qRow])
+    valuesSyncTime.push([gTime,value.dtDiffSec])
+    valuesConflicts.push([gTime,value.conflicts])
+    valuesSent.push([gTime,value.sentCount])
+    valuesChangesSent.push([gTime,value.tRow])
+    valuesSentVsChangesSent.push([gTime,value.sent/value.tRow])
+    valuesPullAttachments.push([gTime,value.pullAttCount])
+    valuesPushAttCount.push([gTime,value.pushAttCount])
+    valuesPushCount.push([gTime,value.pushCount])
+    labelsJ.push(gTime) 
   });
 
 
@@ -811,6 +820,7 @@ function makeChart(data){
         }, 
         x :{
 
+
         }
       },plugins: {
      
@@ -884,6 +894,7 @@ function makeChart(data){
 
 
       $('#resultSize').html(resultShow.toLocaleString());
+      //sgErrorGraph()
 
     }
 
