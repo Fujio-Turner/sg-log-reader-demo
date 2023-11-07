@@ -507,7 +507,7 @@ function sgUserList(){
 
     $.each(data2, function(key, value) {  
         var tErrors = value.query + value.dcp + value.import
-        var gTime = value.dt
+        var gTime = value.dt.substring(11)
         newDataset.data.push([gTime,tErrors])
         });
       
@@ -732,7 +732,7 @@ function makeChart(data){
   }
 
   $.each(data, function(key, value) {   
-    var gTime = value.dt
+    var gTime = value.dt.substring(11)
     resultShow = resultShow + value.dtCount   
     valuesErrors.push([gTime,value.errors])
     valuesChangesCache.push([gTime,value.cRow])
