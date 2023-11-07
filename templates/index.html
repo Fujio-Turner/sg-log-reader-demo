@@ -465,6 +465,50 @@ function sgUserList(){
     });
   }
 
+  function sgErrorGraph(){
+
+    var from = $('#dtFrom').val();
+    var to = $('#dtTo').val();
+
+    var data1 = {}
+    data1['startDt'] = from
+    data1['endDt'] = to
+
+    $.ajax({
+        type: 'POST',
+        url: '/dateRangeSgErrors',
+        data: JSON.stringify(data1),
+        dataType: 'json',
+        contentType:'application/json; charset=utf-8',
+        success: function(data2) { 
+          console.log(data2)
+          //addIntoMainChart(data2)
+        }
+    });
+
+
+  }
+
+  function addIntoMainChart(data2){
+
+    valuesErrorCount = []
+
+    $.each(data, function(key, value) {  
+        valuesErrorCount.push(value.query + value.dcp + value.import)
+        labelsJ.push(value.tRange.substring(4)) 
+        });
+
+    c1.data.datasets.push({
+      label: "SG Process Errors",
+      backgroundColor: '#2F2F2F',
+      data:valuesErrorCount
+    });
+
+    c1.update()
+  }
+
+
+
   function bigSearch(){
 
     var from = $('#dtFrom').val();
@@ -1143,7 +1187,8 @@ function getSampleDt(){
         type: 'GET',
         dataType: 'json', // added data type
         success: function(data) {
-            
+          
+          if (data.length > 0){
             const dateString = data[0]['dt'];
             const date = new Date(dateString);
             date.setHours(date.getHours() - 6);
@@ -1151,6 +1196,10 @@ function getSampleDt(){
           $('#dtFrom').val( date.toISOString().substr(0,19));
           $('#dtTo').val(data[0]['dt']);
           sgDbListGet();
+
+          }else{
+            $.notify("No CBL WebSocket Connections");
+          }
 
         }
     });

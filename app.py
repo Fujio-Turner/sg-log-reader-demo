@@ -349,6 +349,26 @@ class work():
 	def cbLastWsId(self):
 		return {}
 	
+
+	def sgErrors(self,rangeData):
+
+		q = 'SELECT e.`dt` , e.`query` , e.`dcp` , e.`import` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as e WHERE e.`docType` = "sgErrors" '
+		q = q + ' AND e.`dt` BETWEEN $startDt AND $endDt ' 
+		q = q + ' ORDER BY e.`dt` ASC '
+		ic(q)
+		data = []
+		try:
+			result = self.cluster.query(q, QueryOptions(named_parameters=rangeData))
+			for row in result.rows():
+				data.append(row)
+			ic(data)
+			return data
+		except CouchbaseException:
+			ic(traceback.format_exc())
+			return []
+
+
+
 	def lastWs(self):
 
 		q = 'SELECT  u.`dt` , META(u).id as cbKey FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
@@ -425,10 +445,20 @@ def sgUserlist():
 		return a
 	else:
 		return []
+	
+@app.route('/dateRangeSgErrors',methods=['POST'])
+def sgErrors():
+	if request.method == 'POST':
+		ic(request.json)
+		a = cb.sgErrors(request.json)
+		return a
+	else:
+		return []
 
 @app.route('/lastWsId')
 def lastWsId():
     return cb.lastWs()
+
 
 from flask import Flask
 

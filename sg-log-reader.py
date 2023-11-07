@@ -142,9 +142,7 @@ class work():
 			if len(c) > 1:
 				#check if ws in new or old
 				userN = self.getUserNameBlip(wsLine)
-				
 				httpNum = self.httpTransNumPlus(wsLine)
-
 				if httpNum+userN in self.wsIdList:
 					bline = self.wsIdList[httpNum+userN]
 					if "ws" not in bline:
@@ -160,11 +158,23 @@ class work():
 
 	def httpTransNumPlus(self,line):
 		h = line.split(" HTTP+: ")
-		return h[1].split(" ")[0]
+		r =  h[1].split(" ")
+		if "#" in r[0]:
+			return r[0] #PRE SG 3.1
+		if "#" in r[1]:
+			return r[1].replace(":", "")  #Post SG 3.1
+		return ""
 
 	def httpTransNum(self,line):
-		h = line.split(" HTTP:  ")
-		return h[1].split(" ")[0]
+		h = line.split("HTTP:")
+		if h[1].split(" ")[1] != "":
+			r = h[1].split(" ")[1]  #post-SG 3.1
+			t = r.split("c:")[1]
+		elif h[1].split(" ")[2] != "":
+			t = h[1].split(" ")[2] #pre-SG 3.1
+		else:
+			t = ''
+		return t
 
 	def getUserName(self,line):
 
@@ -186,13 +196,13 @@ class work():
 	def getUserNameBlip(self,line):
 		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
 
+
 		if "<ud>" in line and "</ud>" in line:
 			pattern = r'\(as <ud>(.*?)</ud>\)'
 			# Use re.search to find the first match for the pattern in the log line
 			match = re.search(pattern, line)
 			# If a match is found, print the matched string
-			if match:
-				return match.group(1)
+			if match:				return match.group(1)
 
 		c = line.split(" ")
 		if len(c) == 20:
@@ -403,7 +413,18 @@ class work():
 			ic(a)
 
 		b = line.split('GetCachedChanges("')
+
+		match = re.search(r'<ud>\d+\.<ud>(.*?)</ud></ud>', b[1]) #POST SG 3.1
+		
+		if match:
+			return [int(a[8]),match.group(1)]
+		else:
+			print("no Match")
+			print(a)
+		
 		c = b[1].split('"')
+		
+		
 		if a[7] == "got":
 			return [int(a[8]),c[0]]
 		else:
@@ -414,10 +435,16 @@ class work():
 		if self.debug == True:
 			ic(a)
 
-		b = line.split('GetChangesInChannel("')
-		c = b[1].split('"')
+		if "<ud>" in a[5]:
+			match = re.search(r'<ud>\d+\.<ud>(.*?)</ud></ud>', a[5]) # POST SG 3.1
 
-		return [int(a[6]),c[0]]
+			if match:
+				return [int(a[7]),match.group(1)]
+		else:
+
+			b = line.split('GetChangesInChannel("') # PRE SG 3.1
+			c = b[1].split('"')
+			return [int(a[6]),c[0]]
 
 	def getTimeFromLine(self,line):
 		return [line[0+self.sgDtLineOffset:19+self.sgDtLineOffset].rstrip("-"),line[0+self.sgDtLineOffset:24+self.sgDtLineOffset].rstrip("-")]
@@ -435,7 +462,6 @@ class work():
 			if "error" in x:
 				ic(t[0],x)
 				e = self.errorTempDoc(t[0],"dcp")
-				print(e)
 
 	def importCheck(self,x):
 		if "Import:" in x:
@@ -472,7 +498,10 @@ class work():
 		a = x.split(" ")
 		if self.debug == True:
 			ic(a)
-		return int(a[5])
+		if a[5] == "Sent":
+			return int(a[6]) #Post SG 3.1
+		else:
+			return int(a[5]) #Pre SG 3.1
 	
 	def findPushCount(self,x):
 		a = x.split("#Changes: ")
