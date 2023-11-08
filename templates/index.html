@@ -1120,7 +1120,7 @@ c3 = new Chart(ctx3, {
       $.each(data, function(key, value) {  
 
         
-        var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dt +"</b>";
+        var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dtClock +"</b>";
           html = html + ' <b>wsId:</b> ' +value.cbKey;
           html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec+ " ";
 
