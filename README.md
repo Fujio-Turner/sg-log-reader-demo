@@ -3,7 +3,7 @@ Version 2.0
 
 ![Dashboard](img/sg-log-reader-2.0.png)
 
-##Why
+## Why
 
 Couchbase Mobile 2.x and greater now communicates via WebSockets.
 
@@ -12,7 +12,7 @@ This means it easier to track a mobile user's replication to see "Why is sync is
 #### Future - More
 In the future it will do more to understand other things going on inside Sync Gateway more to debug why there are sync issues.
 
-##What
+## What
 The sg-log-reader tool takes your SG log file and parses them to:
 
 * Aggregate
@@ -25,16 +25,16 @@ The sg-log-reader tool takes your SG log file and parses them to:
 
 It takes the above information and puts it into a Couchbase Server bucket to query for a built-in web dashboard (ABOVE IMAGE).
 
-##How
+## How
 
-####Process
+#### Process
 You just need to:
 
- 1. Pick a sg_info.log for the python script to process.
+ 1. Pick a `sg_info.log` for the python script to process.
  2. Have access to a CB Cluster for the script to insert data into.
  3. Open up the included index.html and pick a Begin and End Date to query
 
-####Result
+#### Result
  It will:
    Output all the Sync Gateway's databases
    Output a list of names of all device users.
@@ -43,22 +43,26 @@ You just need to:
    you can pick a specific sync for a specific user.
 
 
-###Requirements:
+### Requirements:
 
-Couchbase Bucket
+- Couchbase Bucket
 
-Couchbase Cluster with Index and Query Service
+- Couchbase Cluster with Index and Query Service
 
-Create the below index.
+- Create the below indexes.
 
 ```sql
-CREATE INDEX `userSyncFinder_v6` ON `sg-log-reader`(`dt`,`user`,`sgDb`,`dtDiffSec`,`sentCount`,`errors`,`tRow`,`since`,array_length(`filterBy`),`conflicts`,`pushAttCount`,`pullAttCount`,`pushCount`,`qRow`,`cRow`,`blipC`) WHERE ((`docType` = "byWsId") and (`orphane` = false))
+CREATE INDEX `sgProcessErrorsEpoch_v2` ON `sg-log-reader`(`dtFullEpoch`,`import`,`dcp`,`query`) WHERE (`docType` = "sgErrors")
 ```
 
-NOTE: if you put the data in a different bucket then `sg-log-reader` change the above to match your bucket name.
+```sql
+CREATE INDEX `userSyncFinderEpoch_v7` ON `sg-log-reader`(`dtFullEpoch`,`user`,`sgDb`,`dtDiffSec`,`sentCount`,`errors`,`tRow`,`since`,array_length(`filterBy`),`conflicts`,`pushAttCount`,`pullAttCount`,`pushCount`,`qRow`,`cRow`,`blipC`) WHERE ((`docType` = "byWsId") and (`orphane` = false))
+```
+
+***NOTE:*** if you put the data in a different bucket then `sg-log-reader` change the above index definitons to match your bucket name.
 
 
-####Install 
+#### Install 
 
 Python Virtual Environment:
 [https://pypi.org/project/pipenv/](https://pypi.org/project/pipenv/)
@@ -72,7 +76,7 @@ Homebrew install
 ```
 
 
-##Running|Using It
+## Running / Using It
 Running the code by creating a Python Virtual Environment
 
 ```console
@@ -121,11 +125,11 @@ Starting - Per wsId :  2023-11-05 09:43:37.112698
 Done - Per wsId :  2023-11-05 09:48:19.576021
 ```
 
-**NOTE:** a sg_info.log that is large , 100MB+ and/or more have a lot of unique WebSocket information will take a long time to process.
+**NOTE:** a `sg_info.log` that is large , 100MB+ and/or more have a lot of unique WebSocket information will take a long time to process.
 
-After you get the above ```Done - Per wsId: ...``` data should be in your Couchbase bucket.
+After you get the above `Done - Per wsId: ...` data should be in your Couchbase bucket.
 
-####Dashboard
+#### Dashboard
 
 To get to a dashboard to see stats you'll run a local python Flask Web Server. Run the Command below to start the web server.
 
@@ -152,7 +156,7 @@ The dashboard will auto pre-populate the newest datetime in the box ,To DateTime
 Just click the Button(Search) you should get some results.
 
 
-###FAQ
+### FAQ
 **Q:** What version of Python do I need?
 
 **A:** Python 3.6+ 
@@ -166,7 +170,7 @@ Just click the Button(Search) you should get some results.
 
 **A:** Its been testing with Sync Gateway version 2.8.x to 3.0.1. 
 
-###NOTES
+### NOTES
 
 -- Its advised to "Flush" the Couchbase Bucket for each new SG environments you process.
 

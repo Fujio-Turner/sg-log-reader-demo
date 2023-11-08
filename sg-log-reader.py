@@ -231,7 +231,6 @@ class work():
 	def getDataPerWsIdWorker(self,x):
 		sinceList = []
 
-		
 		if x["auth"] == True:
 			w = x["ws"]
 
@@ -458,14 +457,14 @@ class work():
 			t = self.getTimeFromLine(x)
 			if "error" in x:
 				ic(t[0],x)
-				e = self.errorTempDoc(t[0],"dcp")
+				e = self.errorTempDoc(t[0],t[1],"dcp")
 
 	def importCheck(self,x):
 		if "Import:" in x:
 			t = self.getTimeFromLine(x)
 			if "error" in x:
 				ic(t[0],x)
-				r = self.errorTempDoc(t[0],"import")
+				r = self.errorTempDoc(t[0],t[1],"import")
 				return r
 	
 	def sqlCheck(self,x):
@@ -473,10 +472,10 @@ class work():
 			t = self.getTimeFromLine(x)
 			if "error" in x:
 				ic(t[0],x)
-				r = self.errorTempDoc(t[0],"query")
+				r = self.errorTempDoc(t[0],t[1],"query")
 				return r			
 
-	def errorTempDoc(self,dt,errorElement):
+	def errorTempDoc(self,dt,dtFullEpoch,errorElement):
 		key = dt + "::errors"
 		d = self.cbGet(key)
 		if d != False:
@@ -486,7 +485,7 @@ class work():
 			return e
 		else:
 			#if not create Template
-			j = {"docType":"sgErrors","dt":dt,"import":0,"dcp":0,"query":0}
+			j = {"docType":"sgErrors","dt":dt,"dtFullEpoch":self.iso8601_to_epoch(dtFullEpoch),"import":0,"dcp":0,"query":0}
 			j[errorElement] += 1
 			f = self.cbInsert(key,j,self.cbTtl)
 			return f

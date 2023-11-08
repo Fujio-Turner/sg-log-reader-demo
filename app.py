@@ -68,19 +68,18 @@ class work():
 			ic(traceback.format_exc())
 			return {}
 		
-	def cbSgDbNameList(self,rangeData):
+	def cbSgDbNameListEpoch(self,rangeData):
 		ic(rangeData)
 		if 'startDt' not in rangeData or not rangeData["startDt"] or 'endDt' not in rangeData or not rangeData["endDt"]:
 			return []
 
 		q = 'SELECT  count(u.`sgDb`) as `sgDbCount` , u.`sgDb` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
 		q = q + ' AND u.`sgDb` IS NOT MISSING '
 		q = q + ' AND u.`user` IS NOT MISSING '
 		q = q + ' AND u.`orphane` = False '
 		q = q + ' GROUP BY u.`sgDb` '
 		q = q + ' ORDER BY u.`sgDb` '
-
 		data = []
 		try:
 			result = self.cluster.query(q, QueryOptions(named_parameters=rangeData))
@@ -90,30 +89,33 @@ class work():
 		except CouchbaseException:
 			ic(traceback.format_exc())
 			return []
-
-	def cbDtRangeSearch(self,rangeData):
+		
+	def cbDtRangeSearchEpoch(self,rangeData):
 
 		ic(rangeData)
+
+		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
+			dtSplit = "1"
+		elif rangeData["viewBy"] and rangeData["viewBy"] == "min":
+			dtSplit = "100"
+
 		if 'sgDb' not in rangeData or not rangeData["sgDb"]:
 			return []
 		
 		q = 'SELECT ' 
-		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
-		
-			q = q + ' u.`dt`, COUNT(u.`dt`) as `dtCount` , SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
-		
-		elif rangeData["viewBy"] and rangeData["viewBy"] == "min" :
-		
-			q = q + ' SUBSTR(u.`dt`,0,16) as `dt`, COUNT(SUBSTR(u.`dt`,1,15)) as `dtCount`, SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
 
+		if rangeData["viewBy"] and rangeData["viewBy"] in ["sec","min"]:
+		
+			q = q + ' floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+'*1000 as `dt`, COUNT(floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+'*1000) as `dtCount` , SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
+		
 		else:
 			if rangeData["pie"] and rangeData["pie"] == True:
 				q = q + '  u.`tRow`, u.`sentCount` , u.`since` ,u.`cRow` , u.`qRow` ' 
 			else: 
-				q = q + ' u.`dt`, 1 as `dtCount` , u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
+				q = q + ' u.`dtFullEpoch`*1000 as `dt`, 1 as `dtCount`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
 
 		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
 		q = q + ' AND u.`sgDb` = $sgDb '
 		q = q + ' AND u.`user` IS NOT MISSING '
 		q = q + ' AND u.`orphane` = False '
@@ -161,16 +163,12 @@ class work():
 			q = q + ' AND u.`user` IS NOT MISSING '
 		else:
 			q = q + ' AND u.`user` = $user '
-
-		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
-			q = q + ' GROUP BY u.`dt` '
-
-		if rangeData["viewBy"] and rangeData["viewBy"] == "min":
-			q = q + ' GROUP BY SUBSTR(u.`dt`,0,16) '
-			q = q + ' ORDER BY SUBSTR(u.`dt`,0,16) ASC '
+		
+		if rangeData["viewBy"] and rangeData["viewBy"] in  ["sec","min"]:
+			q = q + ' GROUP BY floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+' '
+			q = q + ' ORDER BY floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+' ASC '
 		else:
-			q = q + ' ORDER BY u.`dt` ASC '
-
+			q = q + ' ORDER BY u.`dtFullEpoch` ASC '
 
 		data = []
 		ic(q)
@@ -183,7 +181,7 @@ class work():
 			ic(traceback.format_exc())
 			return []
 		
-	def cbDtDiffStats(self,rangeData):
+	def cbDtDiffStatsEpoch(self,rangeData):
 
 			ic(rangeData)
 			if 'sgDb' not in rangeData or not rangeData["sgDb"]:
@@ -203,7 +201,7 @@ class work():
 			q = q + ' else "11. n/a" '
 			q = q + ' END  as tRange '
 			q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId" '
-			q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+			q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
 			q = q + ' AND u.`sgDb` = $sgDb '
 			q = q + ' AND u.`orphane` = False '
 
@@ -275,13 +273,13 @@ class work():
 			ic(traceback.format_exc())
 			return {}
 
-	def cbUserList(self,rangeData):
+	def cbUserListEpoch(self,rangeData):
 		ic(rangeData)
-		if 'startDt' not in rangeData or not rangeData["startDt"] or 'endDt' not in rangeData or not rangeData["endDt"] or 'sgDb' not in rangeData or not rangeData["sgDb"]:
+		if 'startDtEpoch' not in rangeData or not rangeData["startDtEpoch"] or 'endDtEpoch' not in rangeData or not rangeData["endDtEpoch"] or 'sgDb' not in rangeData or not rangeData["sgDb"]:
 			return []
 
 		q = 'SELECT  count(u.`user`) as `sgUserCount` , u.`user` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q + ' AND u.dt BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
 		q = q + ' AND u.`sgDb` = $sgDb '
 		q = q + ' AND u.`user` IS NOT MISSING '
 		q = q + ' AND u.`orphane` = False '
@@ -348,33 +346,30 @@ class work():
 		return {}
 	def cbLastWsId(self):
 		return {}
-	
 
-	def sgErrors(self,rangeData):
+	def sgErrorsEpoch(self,rangeData):
+
+
+		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
+			dtSplit = "1"
+		elif rangeData["viewBy"] and rangeData["viewBy"] == "min":
+			dtSplit = "100"
 
 		q = 'SELECT ' 
 
-		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
-		
-			q = q + ' e.`dt`, COUNT(e.`dt`) as `dtCount` , SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import`  ' 
-		
-		elif rangeData["viewBy"] and rangeData["viewBy"] == "min" :
-		
-			q = q + ' SUBSTR(e.`dt`,0,16) as `dt`, COUNT(SUBSTR(e.`dt`,1,15)) as `dtCount`, SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import`  ' 
+		if rangeData["viewBy"] and rangeData["viewBy"] in ["sec","min"]:
+			q = q + ' floor((e.`dtFullEpoch`/'+dtSplit+'))*'+dtSplit+'*1000 as `dt`, COUNT(floor((e.`dtFullEpoch`/'+dtSplit+'*1000))*'+dtSplit+') as `dtCount` , SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import` ' 
 		else:
-			q = q + ' e.`dt` , e.`query` , e.`dcp` , e.`import` ' 
+			q = q + ' e.`dtFullEpoch`*1000 as `dt`, e.`query` , e.`dcp` , e.`import` ' 
 
 		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as e WHERE e.`docType` = "sgErrors" '
-		q = q + ' AND e.`dt` BETWEEN $startDt AND $endDt ' 
+		q = q + ' AND e.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
 
-		if rangeData["viewBy"] and rangeData["viewBy"] == "sec":
-			q = q + ' GROUP BY e.`dt` '
-
-		if rangeData["viewBy"] and rangeData["viewBy"] == "min":
-			q = q + ' GROUP BY SUBSTR(e.`dt`,0,16) '
-			q = q + ' ORDER BY SUBSTR(e.`dt`,0,16) ASC '
+		if rangeData["viewBy"] and rangeData["viewBy"] in  ["sec","min"]:
+			q = q + ' GROUP BY floor((e.`dtFullEpoch`/'+dtSplit+'))*'+dtSplit+' '
+			q = q + ' ORDER BY floor((e.`dtFullEpoch`/'+dtSplit+'))*'+dtSplit+' ASC '
 		else:
-			q = q + ' ORDER BY e.`dt` ASC '
+			q = q + ' ORDER BY e.`dtFullEpoch` ASC '
 
 		ic(q)
 		data = []
@@ -389,16 +384,15 @@ class work():
 			return []
 
 
+	def lastWsEpoch(self):
 
-	def lastWs(self):
-
-		q = 'SELECT  u.`dt` , META(u).id as cbKey FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
-		q = q + ' AND u.dt IS NOT MISSING '
+		q = 'SELECT  MILLIS_TO_STR(u.`dtFullEpoch`* 1000 , "1111-11-11T11:11:11") as `dt` , MILLIS_TO_STR((u.`dtFullEpoch` - 3600) * 1000 , "1111-11-11T11:11:11") as `dtHrAgo` FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
+		q = q + ' AND u.`dtFullEpoch` IS NOT MISSING '
 		q = q + ' AND u.`sgDb` IS NOT MISSING '
 		q = q + ' AND u.`user` IS NOT MISSING '
 		q = q + ' AND u.`dtDiffSec` IS NOT MISSING '
 		q = q + ' AND u.`orphane` = False '
-		q = q + ' ORDER BY u.`dt` DESC '
+		q = q + ' ORDER BY u.`dtFullEpoch` DESC '
 		q = q + ' LIMIT 1'
 
 		ic(q)
@@ -421,20 +415,21 @@ app = Flask(__name__)
 def hello():
     return render_template('index.html')
 
-@app.route('/dateRange', methods=['POST'])
-def dateRange():
+
+@app.route('/dateRangeEpoch', methods=['POST'])
+def dateRangeEpoch():
 	if request.method == 'POST':
 		ic(request.json)
-		a = cb.cbDtRangeSearch(request.json)
+		a = cb.cbDtRangeSearchEpoch(request.json)
 		return a
 	else:
 		return []
 	
-@app.route('/dtDiffSecStats', methods=['POST'])
-def dateDiffSec():
+@app.route('/dtDiffSecStatsEpoch', methods=['POST'])
+def dateDiffSecEpoch():
 	if request.method == 'POST':
 		ic(request.json)
-		a = cb.cbDtDiffStats(request.json)
+		a = cb.cbDtDiffStatsEpoch(request.json)
 		return a
 	else:
 		return []
@@ -449,36 +444,36 @@ def getWsId():
 	else:
 		return []
 
-@app.route('/sgDbList', methods=['POST'])
-def sgDblist():
+@app.route('/sgDbListEpoch', methods=['POST'])
+def sgDblistEpoch():
 	if request.method == 'POST':
 		ic(request.json)
-		a = cb.cbSgDbNameList(request.json)
+		a = cb.cbSgDbNameListEpoch(request.json)
 		return a
 	else:
 		return []
 
-@app.route('/sgUserList',methods=['POST'])
-def sgUserlist():
+@app.route('/sgUserListEpoch',methods=['POST'])
+def sgUserlistEpoch():
 	if request.method == 'POST':
 		ic(request.json)
-		a = cb.cbUserList(request.json)
-		return a
-	else:
-		return []
-	
-@app.route('/dateRangeSgErrors',methods=['POST'])
-def sgErrors():
-	if request.method == 'POST':
-		ic(request.json)
-		a = cb.sgErrors(request.json)
+		a = cb.cbUserListEpoch(request.json)
 		return a
 	else:
 		return []
 
-@app.route('/lastWsId')
-def lastWsId():
-    return cb.lastWs()
+@app.route('/dateRangeSgErrorsEpoch',methods=['POST'])
+def sgErrorsEpoch():
+	if request.method == 'POST':
+		ic(request.json)
+		a = cb.sgErrorsEpoch(request.json)
+		return a
+	else:
+		return []
+
+@app.route('/lastWsIdEpoch')
+def lastWsIdEpoch():
+    return cb.lastWsEpoch()
 
 
 from flask import Flask
