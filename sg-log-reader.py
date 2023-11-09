@@ -6,7 +6,7 @@ from icecream import ic
 import traceback
 
 from couchbase.auth import PasswordAuthenticator
-from couchbase.cluster import Cluster
+from acouchbase.cluster import Cluster
 import couchbase.subdocument as SD
 from couchbase.options import (ClusterOptions, ClusterTimeoutOptions, QueryOptions)
 from couchbase.exceptions import CouchbaseException
@@ -22,6 +22,8 @@ import cProfile
 import pstats
 import hashlib
 
+import asyncio
+
 
 class work():
 
@@ -35,7 +37,7 @@ class work():
 	cbScopeName = "_default"
 	cbCollectionName = "_default"
 	cbColl = None
-	logData = None
+	logData = []
 	wsIdList = {}
 	wasBlipLines = False
 	blipLineCount = 0
@@ -51,34 +53,41 @@ class work():
 
 
 	def __init__(self,file):
-		self.readConfigFile(file)
-		self.debugIceCream()
-		self.makeCB()
-		self.openSgLogFile()
+		asyncio.run(self.main(file))
 
-	def makeCB(self):
+	async def main(self,file):
+		await self.readConfigFile(file)
+		await self.debugIceCream()
+		await self.makeCB()
+		await self.openSgLogFile()
+
+	async def makeCB(self):
+
 		try:
 			auth = PasswordAuthenticator(self.cbUser, self.cbPass)
 			cluster = Cluster('couchbase://'+self.cbHost, ClusterOptions(auth))
-			cluster.wait_until_ready(timedelta(seconds=5))
+			await cluster.wait_until_ready(timedelta(seconds=5))
 
-			self.cb = cluster.bucket(self.cbBucketName)
-			#self.cbColl = self.cb.scope(self.cbScopeName).collection(self.cbCollectionName)
-			self.cbColl = self.cb.default_collection()
-		except:
+			bucket = cluster.bucket(self.cbBucketName)
+			#bucket.scope(self.cbScopeName).collection(self.cbCollectionName)
+			self.cbColl = bucket.default_collection()
+			self.cb = await bucket.on_connect()
+			return cluster , self.cb
+		except CouchbaseException as ex:
+			print("nope CB",ex)
 			ic("Error: Could not connect to CB Cluster: " , self.cbHost ," as: ",self.cbUser )
 			exit()
 
-	def diffdates(self,d1, d2):
+	async def diffdates(self,d1, d2):
 		return (time.mktime(time.strptime(d2,"%Y-%m-%dT%H:%M:%S")) - time.mktime(time.strptime(d1, "%Y-%m-%dT%H:%M:%S")))
 
-	def debugIceCream(self):
+	async def debugIceCream(self):
 		if self.debug == True:
 			ic.enable();
 		else:
 			ic.disable()
 
-	def readConfigFile(self,configFile):
+	async def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
 		b = json.loads(a.read())
 		self.sgLogName = b["file-to-parse"]
@@ -92,8 +101,7 @@ class work():
 		self.cbTtl = b['cb-expire']
 		a.close()
 
-	def openSgLogFile(self):
-		bigOne = []
+	async def openSgLogFile(self):
 		index = 0	
 		print("Starting - Reading Data File: ",datetime.datetime.now())
 		with open(self.sgLogName, "r") as a:
@@ -103,46 +111,46 @@ class work():
 			counter +=1
 			ic(x)
 			line = x.rstrip('\r|\n')
-			bigOne.append(line)
-			self.importCheck(line)
-			self.sqlCheck(line)
+			self.logData.append(line)
+			await self.importCheck(line)
+			await self.sqlCheck(line)
 			#self.replicateCheck(line)
-			self.dcpChecks(line)
+			await self.dcpChecks(line)
 			#self.sgStarts(line)
 			if self.wasBlipLines == True:
 				ic(line)
-				self.findWsId(line,index)
+				await self.findWsId(line,index)
 
-			self.findBlipLine(line,index)
+			await self.findBlipLine(line,index)
 			index +=1
 		self.logNumberOflines = counter
 		self.logLineDepthLevel = counter * self.logLineDepthPercent
 		print("Number - Lines in log file: ",counter)
 		print("Number - WebSocket Connections: ",self.blipLineCount)
 		print("Done - Reading Data File: ",datetime.datetime.now())
-		self.logData = bigOne
 		ic(self.wsIdList)
-		self.getDataPerWsId()
+		await self.getDataPerWsId()
 		if self.debug == True:
 			ic(self.logData)
 
-	def findBlipLine(self,x,lineNumb):
+	async def findBlipLine(self,x,lineNumb):
 		if "/_blipsync" in x: 
 			self.blipLineCount += 1
-			userN = self.getUserName(x)
-			t = self.getTimeFromLine(x)
-			httpNum = self.httpTransNum(x)
+			userN = await self.getUserName(x)
+			t = await self.getTimeFromLine(x)
+			httpNum = await self.httpTransNum(x)
 			k = httpNum+userN[1]
-			self.wsIdList[k] = {"user":userN[1],"sgDb":userN[0],"auth":False,"dt":t[0],"dtFullEpoch":self.iso8601_to_epoch(t[1]),"http":httpNum}
+			isoDt = await self.iso8601_to_epoch(t[1])
+			self.wsIdList[k] = {"user":userN[1],"sgDb":userN[0],"auth":False,"dt":t[0],"dtFullEpoch":isoDt,"http":httpNum}
 			self.wasBlipLines = True
 
-	def findWsId(self,wsLine,index):
+	async def findWsId(self,wsLine,index):
 		if "Upgraded to BLIP+WebSocket protocol" in wsLine or "Upgraded to WebSocket" in wsLine:
 			c = re.findall(r"\[([A-Za-z0-9_]+)\]", wsLine)
 			if len(c) > 1:
 				#check if ws in new or old
-				userN = self.getUserNameBlip(wsLine)
-				httpNum = self.httpTransNumPlus(wsLine)
+				userN = await self.getUserNameBlip(wsLine)
+				httpNum = await self.httpTransNumPlus(wsLine)
 				if httpNum+userN in self.wsIdList:
 					bline = self.wsIdList[httpNum+userN]
 					if "ws" not in bline:
@@ -156,7 +164,7 @@ class work():
 		if " --> 401 Login required " in wsLine:
 			self.wasBlipLines = False
 
-	def httpTransNumPlus(self,line):
+	async def httpTransNumPlus(self,line):
 		h = line.split(" HTTP+: ")
 		r =  h[1].split(" ")
 		if "#" in r[0]:
@@ -165,7 +173,7 @@ class work():
 			return r[1].replace(":", "")  #Post SG 3.1
 		return ""
 
-	def httpTransNum(self,line):
+	async def httpTransNum(self,line):
 		h = line.split("HTTP:")
 		if h[1].split(" ")[1] != "":
 			r = h[1].split(" ")[1]  #post-SG 3.1
@@ -176,7 +184,7 @@ class work():
 			t = ''
 		return t
 
-	def getUserName(self,line):
+	async def getUserName(self,line):
 
 		c = line.split(" ")
 		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
@@ -193,7 +201,7 @@ class work():
 		else:
 			return [sgDb,usrN]
 
-	def getUserNameBlip(self,line):
+	async def getUserNameBlip(self,line):
 		#c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
 
 
@@ -214,29 +222,29 @@ class work():
 			if c[16] != "":
 				return c[16].rstrip(')')
 
-	def getDataPerWsId(self):
+	async def getDataPerWsId(self):
 		print("Starting - Per wsId : ",datetime.datetime.now())
 		#sinceList = []
 		ic(self.wsIdList)
 		for key, x in self.wsIdList.items():
-			z = self.getDataPerWsIdWorker(x)
+			z = await self.getDataPerWsIdWorker(x)
 			if self.debug == True:
 				ic(x,z)
 			else:
-				self.cbUpsert(z[0],z[1],self.cbTtl)
+				await self.cbUpsert(z[0],z[1],self.cbTtl)
 
 
 		print("Done - Per wsId : ",datetime.datetime.now())
 
-	def getDataPerWsIdWorker(self,x):
+	async def getDataPerWsIdWorker(self,x):
 		sinceList = []
 
 		if x["auth"] == True:
 			w = x["ws"]
 
-			r = self.loopLog(x["ws"],x["startLine"],sinceList)
-			tf = self.getTimeFromLine(r[0][0])
-			tl = self.getTimeFromLine(r[0][-1])
+			r = await self.loopLog(x["ws"],x["startLine"],sinceList)
+			tf = await self.getTimeFromLine(r[0][0])
+			tl = await self.getTimeFromLine(r[0][-1])
 
 			if r[1] != None:
 				sinceList.append(r[1])
@@ -246,15 +254,16 @@ class work():
 			if r[3] != None:
 				tRow = tRow + r[3]
 			if tf[0] != None and tl[0] != None:
-				df = self.diffdates(tf[0],tl[0])
+				df = await self.diffdates(tf[0],tl[0])
 			else:
 				df = None
+			isoDt = await self.iso8601_to_epoch(tf[1])
 			d = {
 				"docType":"byWsId",
 				"user":x["user"],
 				"sgDb":x["sgDb"],
 				"sgColl":{},				
-				"dtFullEpoch":self.iso8601_to_epoch(tf[1]),
+				"dtFullEpoch":isoDt,
 				"dt":tf[0],
 				"dtEnd":tl[0],
 				"dtDiffSec":df,
@@ -306,7 +315,7 @@ class work():
 		return [w,d]
 
 					
-	def loopLog(self,wsId,startLogLine,sinceList):
+	async def loopLog(self,wsId,startLogLine,sinceList):
 		logLine = []
 		channelRow = 0
 		queryRow = 	0
@@ -342,16 +351,16 @@ class work():
 
 				if "Filter:sync_gateway/bychannel" in x:
 					filterBy = True
-					filterByChannels = self.findChannelsList(x)
+					filterByChannels = await self.findChannelsList(x)
 				
 				if "Since:" in x and "SyncMsg:" in x:
 					if "Since:0 " in x: #looks for _change since=0
 						since = "0"
 					else:
-						since = self.findSince(x)
+						since = await self.findSince(x)
 
 				if "GetCachedChanges(\"" in x:
-					c = self.changeCacheCount(x)
+					c = await self.changeCacheCount(x)
 					channelRow = channelRow + c[0]
 					changesChannels[c[1]] = None
 					continue
@@ -361,7 +370,7 @@ class work():
 					changesChannels[d[1]] = None
 					continue
 				if " Continuous:" in x and " SyncMsg:" in x:
-					continuous = self.findContinuous(x)
+					continuous = await self.findContinuous(x)
 					continue
 				if "BLIP+WebSocket connection closed" in x:
 					passIt = self.logLineDepthLevel - self.logScanDepthAfterClose
@@ -371,7 +380,7 @@ class work():
 					blipOpened = True
 					continue
 				if " changes to client, from seq " in x:		
-					j = self.findSentCount(x)
+					j = await self.findSentCount(x)
 					sent = sent + j
 					continue
 				if " proveAttachment successful for doc " in x:		
@@ -391,7 +400,7 @@ class work():
 					continue
 				#push from CBL 
 				if "Type:proposeChanges" in x:
-					p = self.findPushCount(x)
+					p = await self.findPushCount(x)
 					pushCount = pushCount + p
 					continue
 				if "Added attachment" in x and "CRUD:" in x:
@@ -406,7 +415,7 @@ class work():
 		filterByChannels.sort()
 		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc,changesChannels,pullAttCount]
 
-	def changeCacheCount(self,line):
+	async def changeCacheCount(self,line):
 		a = line.split(" ")
 		if self.debug == True:
 			ic(a)
@@ -442,55 +451,56 @@ class work():
 			c = b[1].split('"')
 			return [int(a[6]),c[0]]
 
-	def getTimeFromLine(self,line):
+	async def getTimeFromLine(self,line):
 		return [line[0+self.sgDtLineOffset:19+self.sgDtLineOffset].rstrip("-"),line[0+self.sgDtLineOffset:24+self.sgDtLineOffset].rstrip("-")]
 
-	def sgStarts(self,x):
+	async def sgStarts(self,x):
 		if "==== Couchbase Sync Gateway/" in x:
-			t = self.getTimeFromLine(x)
+			t = await self.getTimeFromLine(x)
 			d = {"docType":"sgStart","dt":t[0],"tag":self.sgLogTag}
 			self.cbUpsert(self.sgLogTag+"::sgStart::"+t[0],d,self.cbTtl)
 
 
-	def dcpChecks(self,x):
+	async def dcpChecks(self,x):
 		if "DCP:" in x:
-			t = self.getTimeFromLine(x)
+			t = await self.getTimeFromLine(x)
 			if "error" in x:
 				ic(t[0],x)
 				e = self.errorTempDoc(t[0],t[1],"dcp")
 
-	def importCheck(self,x):
+	async def importCheck(self,x):
 		if "Import:" in x:
-			t = self.getTimeFromLine(x)
+			t = await self.getTimeFromLine(x)
 			if "error" in x:
 				ic(t[0],x)
-				r = self.errorTempDoc(t[0],t[1],"import")
+				r = await self.errorTempDoc(t[0],t[1],"import")
 				return r
 	
-	def sqlCheck(self,x):
+	async def sqlCheck(self,x):
 		if "Query:" in x:
-			t = self.getTimeFromLine(x)
+			t = await self.getTimeFromLine(x)
 			if "error" in x:
 				ic(t[0],x)
-				r = self.errorTempDoc(t[0],t[1],"query")
+				r = await self.errorTempDoc(t[0],t[1],"query")
 				return r			
 
-	def errorTempDoc(self,dt,dtFullEpoch,errorElement):
+	async def errorTempDoc(self,dt,dtFullEpoch,errorElement):
 		key = dt + "::errors"
-		d = self.cbGet(key)
+		d = await self.cbGet(key)
 		if d != False:
 			#Check if doc exists
 			d[errorElement] += 1
-			e = self.cbUpsert(key,d,self.cbTtl)
+			e = await self.cbUpsert(key,d,self.cbTtl)
 			return e
 		else:
 			#if not create Template
-			j = {"docType":"sgErrors","dt":dt,"dtFullEpoch":self.iso8601_to_epoch(dtFullEpoch),"import":0,"dcp":0,"query":0}
+			isoDt = await self.iso8601_to_epoch(dtFullEpoch)
+			j = {"docType":"sgErrors","dt":dt,"dtFullEpoch":isoDt,"import":0,"dcp":0,"query":0}
 			j[errorElement] += 1
-			f = self.cbInsert(key,j,self.cbTtl)
+			f = await self.cbInsert(key,j,self.cbTtl)
 			return f
 
-	def findSentCount(self,x):
+	async def findSentCount(self,x):
 		a = x.split(" ")
 		if self.debug == True:
 			ic(a)
@@ -499,23 +509,23 @@ class work():
 		else:
 			return int(a[5]) #Pre SG 3.1
 	
-	def findPushCount(self,x):
+	async def findPushCount(self,x):
 		a = x.split("#Changes: ")
 		if self.debug == True:
 			ic(a)
 		return int(a[1])
 
-	def n1qlQueryInfo(self,x):
+	async def n1qlQueryInfo(self,x):
 
 		if "Query: N1QL Query" in x:
 
-			t = self.getTimeFromLine(x)
+			t = await self.getTimeFromLine(x)
 			a = x.split(" ")
-			b = self.n1qlTimeSplit(a[6])
+			b = await self.n1qlTimeSplit(a[6])
 			c = {"q":a[4],"t":a[6],"dt":t[0],"tChop":b,"tag":self.sgLogTag}
 			d = {"docType":"query", "q":[c]}
 			ic(b)
-			self.cbSubDocAppend(self.sgLogTag+"::query::"+t[0] ,'q' ,b, self.cbTtl)
+			await self.cbSubDocAppend(self.sgLogTag+"::query::"+t[0] ,'q' ,b, self.cbTtl)
 
 			"""
 			try:
@@ -536,9 +546,9 @@ class work():
 
 		if "Channel query" in x:
 
-			t = self.getTimeFromLine(x)
+			t = await self.getTimeFromLine(x)
 			a = x.split(" ")			
-			b = self.n1qlTimeSplit(a[5])
+			b = await self.n1qlTimeSplit(a[5])
 			c = {"q":a[3],"t":int(a[8]),"chan":a[12],"dt":t[0],"st":a[14],"end":a[16],"tChop":b,"tag":self.sgLogTag}
 			d = {"docType":"query", "q":[c]}
 
@@ -561,7 +571,7 @@ class work():
 			"""		
 
 						
-	def n1qlTimeSplit(self,qTime):
+	async def n1qlTimeSplit(self,qTime):
 		d = {"m":0,"s":0,"ms":0}
 		if len(qTime.split("ms")) > 1:
 			d["ms"] = round(float(qTime[:-2]),1)
@@ -584,14 +594,14 @@ class work():
 			
 		return d
 
-	def replicateCheck(self,x):
+	async def replicateCheck(self,x):
 		b = {}
 		if "Replicate" in x:
-			a = self.replicatorId(x)
+			a = await self.replicatorId(x)
 			if len(a) > 1 and a[0] == "DBG":
-				t = self.getTimeFromLine(x)
-				since = self.findSince(x)
-				chkPt = self.findCheckPts(x)
+				t = await self.getTimeFromLine(x)
+				since = await self.findSince(x)
+				chkPt = await self.findCheckPts(x)
 				#er = self.replicateError(x)
 				id1 = self.sgLogTag+"::replicate::" + str(a[1]) +"::"+ t[0]
 				#check if in dictionary already
@@ -606,12 +616,12 @@ class work():
 				else:
 					b.update({id1:{"repId":str(a[1]),"docType":"replicate","since":since,"getChk":0,"setChk":0,"error":0,"dt":t[0],"tag":self.sgLogTag}})
 		for y in b:
-			self.cbUpsert(y,b[y],self.cbTtl)
+			await self.cbUpsert(y,b[y],self.cbTtl)
 
-	def replicatorId(self,line):
+	async def replicatorId(self,line):
 		return re.findall(r"\[([A-Za-z0-9_-]+)\]",line)
 
-	def findSince(self,line):
+	async def findSince(self,line):
 		pattern = r'Since:(\S+)'
 		match = re.search(pattern, line)
 		if match:
@@ -619,7 +629,7 @@ class work():
 		else:
 			return ""
 			
-	def findContinuous(self,line):
+	async def findContinuous(self,line):
 		continuous_str = None
 		for substr in line.split():
 			if substr.startswith('Continuous:'):
@@ -634,12 +644,12 @@ class work():
 			return None
 
 	
-	def findChannelsList(self,line):
+	async def findChannelsList(self,line):
 		channels = line.split('Channels:')[1].split(',')
 		channels =[channel.split('/')[-1].strip() for channel in channels]
 		return channels
 
-	def findCheckPts(self,line):
+	async def findCheckPts(self,line):
 		a = []
 		if "point" in line.lower():
 			if "stateFnActivePushCheckpoint got event: {PUSH_CHECKPOINT_SUCCEEDED" in line:
@@ -648,11 +658,11 @@ class work():
 				a = [1,0]
 		return a
 
-	def replicateError(self,line,replicatorName):
+	async def replicateError(self,line,replicatorName):
 		if replicatorName in line.lower():
 			ic(line)
 
-	def iso8601_to_epoch(self,timestamp):
+	async def iso8601_to_epoch(self,timestamp):
 		try:
 			dt1 = datetime.datetime.fromisoformat(timestamp)
 			return int(dt1.timestamp())
@@ -668,11 +678,11 @@ class work():
 
 		return False
 	
-	def cbInsert(self,key,doc,ttl=0):
+	async def cbInsert(self,key,doc,ttl=0):
 		#opts = InsertOptions(timeout=timedelta(seconds=5))
 		try:
 			#r = self.cbColl.insert(key,doc,opts,expiry=timedelta(seconds=ttl))
-			r = self.cbColl.insert(key,doc,expiry=timedelta(seconds=ttl))
+			r = await self.cbColl.insert(key,doc,expiry=timedelta(seconds=ttl))
 			ic(r)
 			return r
 		except CouchbaseException:
@@ -680,11 +690,11 @@ class work():
 			ic("Error: Insert Key: ",key)
 			return False
 		
-	def cbUpsert(self,key,doc,ttl=0):
+	async def cbUpsert(self,key,doc,ttl=0):
 		#opts = InsertOptions(timeout=timedelta(seconds=5))
 		try:
 			#r = self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
-			r = self.cbColl.upsert(key,doc,expiry=timedelta(seconds=ttl))
+			r = await self.cbColl.upsert(key,doc,expiry=timedelta(seconds=ttl))
 			ic(r)
 			return r
 		except CouchbaseException:
@@ -692,10 +702,10 @@ class work():
 			ic("Error: Upsert Key: ",key)
 			return False	
 		
-	def cbGet(self,key):
+	async def cbGet(self,key):
 		try:
 			result = self.cbColl.get(key)
-			r = result.content_as[dict]
+			r = await result.content_as[dict]
 			ic(r)
 			return r
 		except DocumentNotFoundException:
@@ -705,9 +715,9 @@ class work():
 			ic("Error: Getting Key: ", key)
 			return False
 	
-	def cbSubDocAppend(self,key,value,data,ttl=0):
+	async def cbSubDocAppend(self,key,value,data,ttl=0):
 		try:
-			r = self.cbColl.mutate_in(key, SD.upsert(value,data),)
+			r = await self.cbColl.mutate_in(key, SD.upsert(value,data),)
 			ic(r)
 			return r
 		except DocumentNotFoundException:
@@ -717,9 +727,9 @@ class work():
 			ic("Error: SubDoc Array Append for: ", key)
 			return False
 		
-	def cbSubDocInsert(self,key,value,data,ttl=0):
+	async def cbSubDocInsert(self,key,value,data,ttl=0):
 		try:
-			r = self.cbColl.mutate_in(key, SD.insert(value,data),)
+			r = await self.cbColl.mutate_in(key, SD.insert(value,data),)
 			ic(r)
 			return r
 		except DocumentNotFoundException:
@@ -729,9 +739,9 @@ class work():
 			ic("Error: SubDoc Insert for: ", key)
 			return False
 
-	def cbSubDocFind(self,key,value):		
+	async def cbSubDocFind(self,key,value):		
 		try:
-			r = self.cbColl.lookup_in(key, SD.get(value))
+			r = await self.cbColl.lookup_in(key, SD.get(value))
 			ic(r)
 			return r
 		except DocumentNotFoundException:
@@ -747,7 +757,9 @@ if __name__ == "__main__":
 	else:
 		print("Error: No config.json file given")
 		exit()
+
 	a = work(configFile)
+	#print(a)
 	
 
 	'''
