@@ -112,7 +112,7 @@ class work():
 			if rangeData["pie"] and rangeData["pie"] == True:
 				q = q + '  u.`tRow`, u.`sentCount` , u.`since` ,u.`cRow` , u.`qRow` ' 
 			else: 
-				q = q + ' u.`dtFullEpoch`*1000 as `dt`, 1 as `dtCount`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
+				q = q + ' u.`dtFullEpoch`*1000 as `dt`, MILLIS_TO_STR(u.`dtFullEpoch` * 1000, "HH:mm:ss") as `dtClock` , 1 as `dtCount`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
 
 		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
 		q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
