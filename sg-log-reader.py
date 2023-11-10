@@ -755,6 +755,34 @@ if __name__ == "__main__":
 	stats.print_stats()
 	stats.dump_stats(filename="test3.prof")
 	'''
+
+
+	'''
+	def split_list(input_list, num_splits):
+    avg = len(input_list) // num_splits
+    out = []
+    last = 0.0
+
+    while last < len(input_list):
+        out.append(input_list[int(last):int(last + avg)])
+        last += avg
+
+    return out
+
+
+	# Create a list of numbers from 10000 to 17000
+	numbers = list(range(10000, 17001))
+
+	# Split the list into 4 smaller lists
+	split_numbers = split_list(numbers, 4)
+
+	# Print the smaller lists
+	for i, small_list in enumerate(split_numbers):
+		print(f"List {i+1}: {small_list}")
+	
+	
+	
+	'''
 	
 	##bootstrap reads config.json and loads logfile into memory to read
 	
