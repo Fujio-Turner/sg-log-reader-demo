@@ -32,8 +32,8 @@ You just need to:
 
  1. Pick a `sg_info.log` for the python script to process.
  2. Have access to a CB Cluster for the script to insert data into.
- 3. Open up the included index.html and pick a Begin and End Date to query
-
+ 3. Open up the included index.html via (`http://127.0.0.1:8080`)
+ 
 #### Result
  It will:
    Output all the Sync Gateway's databases
@@ -44,6 +44,8 @@ You just need to:
 
 
 ### Requirements:
+
+- Python 3.6 or greater
 
 - Couchbase Bucket
 
@@ -151,9 +153,29 @@ WARNING: This is a development server. Do not use it in a production deployment.
 Now open up a Web Browser and go to: [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
 
-The dashboard will auto pre-populate the newest datetime in the box ,To DateTime input box, and picks a SG DB.
+The dashboard will auto pre-populate the newest datetime in the box , TO DateTime input box and an hour back DateTime in the FROM input box. It will pre select a SG DB too.
 
-Just click the Button(Search) you should get some results.
+Just click the button(`Search`) you should get some results.
+
+#### Chart Navigating:
+
+You can click on the line charts and PAN left or right by dragging it. If you hold down the `SHIFT` and select in the chart it will create a `zoom` box  for you pick a section of the chart your more interesting in. There is a `Zoom Reset` button on the left.
+
+#### Picking Users:
+
+##### User List:
+
+On the left it will show you all the SG users who made connections in the DatesTime window selected above plus how many times they connected in that time window. 
+You can sort the list alphabetically(default) or by most number of connections.
+
+##### Just Click Username:
+Just click the name of the user and it will pre populate the filter by username input box ,above, and then just click `Search` to filter and populate charts and stats for that user only.
+
+***note*** When you pick and `Search` by a users the chart will plot `All Entries` on the x-axis regardless if you didn't change the `view by` dropdown value.
+
+##### User Details:
+
+Once you `Search` by a user on the bottom it will show you all the indivudal replication events for that user for that DateTime. If you click on the event it will show the full raw SG log for the WebSocket ID. Double Click to close the raw Sync Gateway logs.
 
 
 ### FAQ
@@ -168,7 +190,7 @@ Just click the Button(Search) you should get some results.
 
 **Q:** What version of Sync Gateway logs will it work on?
 
-**A:** Its been testing with Sync Gateway version 2.8.x to 3.0.1. 
+**A:** Its been testing with Sync Gateway version 2.8.x to 3.0.1. Sorta works with 3.1.x
 
 ### NOTES
 
