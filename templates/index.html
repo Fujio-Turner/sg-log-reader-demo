@@ -822,6 +822,7 @@ function makeChart(data){
                     console.log(chart.data.labels[i] + ': ' + chart.data.datasets[0].data[i]);
                   }
                 },
+
       maintainAspectRatio: false,
       scales: {
         y: {
@@ -834,13 +835,18 @@ function makeChart(data){
       },plugins: {
      
         zoom: {
+          pan:{
+                enabled: true,
+                mode: 'x'
+              },
             zoom: {
               mode: 'x',
               drag: {
                   enabled: true,
                   backgroundColor: "#E1E1E1", 
                   borderColor: "#AFADAD",
-                  borderWidth: 1
+                  borderWidth: 1,
+                  modifierKey: 'shift'
               }
             }
           }
@@ -877,13 +883,18 @@ function makeChart(data){
       plugins: {
 
         zoom: {
+          pan:{
+                enabled: true,
+                mode: 'x'
+              },
             zoom: {
               mode: 'x',
               drag: {
                   enabled: true,
                   backgroundColor: "#DADADA", 
                   borderColor: "#AFADAD",
-                  borderWidth: 2
+                  borderWidth: 2,
+                  modifierKey: 'shift'
               }
             }
           }

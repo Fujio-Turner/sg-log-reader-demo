@@ -128,10 +128,9 @@ class work():
 		print("Number - Lines in log file: ",counter)
 		print("Number - WebSocket Connections: ",self.blipLineCount)
 		print("Done - Reading Data File: ",datetime.datetime.now())
-		ic(self.wsIdList)
+
 		await self.getDataPerWsId()
-		if self.debug == True:
-			ic(self.logData)
+
 
 	async def findBlipLine(self,x,lineNumb):
 		if "/_blipsync" in x: 
@@ -224,24 +223,18 @@ class work():
 
 	async def getDataPerWsId(self):
 		print("Starting - Per wsId : ",datetime.datetime.now())
-		#sinceList = []
 		ic(self.wsIdList)
+		list_of_tasks = []
 		for key, x in self.wsIdList.items():
-			z = await self.getDataPerWsIdWorker(x)
-			if self.debug == True:
-				ic(x,z)
-			else:
-				await self.cbUpsert(z[0],z[1],self.cbTtl)
-
-
+			list_of_tasks.append(self.getDataPerWsIdWorker(x))
+		result = await asyncio.gather(*list_of_tasks,return_exceptions=True)
+		ic(x,result)
 		print("Done - Per wsId : ",datetime.datetime.now())
 
 	async def getDataPerWsIdWorker(self,x):
 		sinceList = []
-
 		if x["auth"] == True:
 			w = x["ws"]
-
 			r = await self.loopLog(x["ws"],x["startLine"],sinceList)
 			tf = await self.getTimeFromLine(r[0][0])
 			tl = await self.getTimeFromLine(r[0][-1])
@@ -311,7 +304,7 @@ class work():
 			"cbTicket":"",
 			"log":[]
 			}
-
+		asyncio.create_task(self.cbUpsert(w,d,self.cbTtl))
 		return [w,d]
 
 					
@@ -323,13 +316,8 @@ class work():
 		errorCount = 0
 		warningCount = 0
 		sent = 0
-		goErrors = 0
-		dcpErrors = 0
-		importErrors = 0
-		attTotal = 0
 		pullAttCount = 0
 		attSuc = 0
-		attFail = 0
 		pushCount = 0
 		pushAttachCount = 0
 		since = None
@@ -339,7 +327,6 @@ class work():
 		filterByChannels = []
 		changesChannels = {}
 		continuous = None
-
 		passIt = 0
 		for x in self.logData[startLogLine:]:
 
@@ -349,16 +336,7 @@ class work():
 				cleanLine = x.rstrip('\r|\n')
 				logLine.append(cleanLine)
 
-				if "Filter:sync_gateway/bychannel" in x:
-					filterBy = True
-					filterByChannels = await self.findChannelsList(x)
-				
-				if "Since:" in x and "SyncMsg:" in x:
-					if "Since:0 " in x: #looks for _change since=0
-						since = "0"
-					else:
-						since = await self.findSince(x)
-
+				#_changes making
 				if "GetCachedChanges(\"" in x:
 					c = await self.changeCacheCount(x)
 					channelRow = channelRow + c[0]
@@ -372,13 +350,6 @@ class work():
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = await self.findContinuous(x)
 					continue
-				if "BLIP+WebSocket connection closed" in x:
-					passIt = self.logLineDepthLevel - self.logScanDepthAfterClose
-					blipClosed = True
-					continue
-				if "Upgraded to" in x and  "WebSocket protocol" in x:
-					blipOpened = True
-					continue
 				if " changes to client, from seq " in x:		
 					j = await self.findSentCount(x)
 					sent = sent + j
@@ -389,15 +360,7 @@ class work():
 				if "Type:getAttachment Digest:" in x:		
 					pullAttCount += 1
 					continue
-				if "409 Document update conflict" in x:
-					conflictCount += 1
-					continue
-				if "[ERR]" in x or "Error retrieving changes for channel" in x:
-					errorCount += 1
-					continue
-				if "[WRN]" in x:
-					warningCount += 1
-					continue
+
 				#push from CBL 
 				if "Type:proposeChanges" in x:
 					p = await self.findPushCount(x)
@@ -406,6 +369,33 @@ class work():
 				if "Added attachment" in x and "CRUD:" in x:
 					pushAttachCount +=1
 					continue
+
+				if "409 Document update conflict" in x:
+					conflictCount += 1
+					continue
+				if "[ERR]" in x or "Error retrieving changes for channel" in x:
+					errorCount += 1
+					continue
+				if "[WRN]" in x:
+					warningCount += 1
+					continue				
+				#beginning and end
+				if "BLIP+WebSocket connection closed" in x:
+					passIt = self.logLineDepthLevel - self.logScanDepthAfterClose
+					blipClosed = True
+					continue
+				if "Upgraded to" in x and  "WebSocket protocol" in x:
+					blipOpened = True
+					continue
+				if "Filter:sync_gateway/bychannel" in x:
+					filterBy = True
+					filterByChannels = await self.findChannelsList(x)
+				
+				if "Since:" in x and "SyncMsg:" in x:
+					if "Since:0 " in x: #looks for _change since=0
+						since = "0"
+					else:
+						since = await self.findSince(x)
 
 			else:
 				passIt += 1
@@ -417,8 +407,7 @@ class work():
 
 	async def changeCacheCount(self,line):
 		a = line.split(" ")
-		if self.debug == True:
-			ic(a)
+		ic(a)
 
 		b = line.split('GetCachedChanges("')
 
@@ -437,8 +426,7 @@ class work():
 
 	def changeQueryCount(self,line):
 		a = line.split(" ")
-		if self.debug == True:
-			ic(a)
+		ic(a)
 
 		if "<ud>" in a[5]:
 			match = re.search(r'<ud>\d+\.<ud>(.*?)</ud></ud>', a[5]) # POST SG 3.1
@@ -502,8 +490,7 @@ class work():
 
 	async def findSentCount(self,x):
 		a = x.split(" ")
-		if self.debug == True:
-			ic(a)
+		ic(a)
 		if a[5] == "Sent":
 			return int(a[6]) #Post SG 3.1
 		else:
@@ -511,8 +498,7 @@ class work():
 	
 	async def findPushCount(self,x):
 		a = x.split("#Changes: ")
-		if self.debug == True:
-			ic(a)
+		ic(a)
 		return int(a[1])
 
 	async def n1qlQueryInfo(self,x):
@@ -759,9 +745,7 @@ if __name__ == "__main__":
 		exit()
 
 	a = work(configFile)
-	#print(a)
 	
-
 	'''
 	with cProfile.Profile() as pr:
 		work(configFile)
