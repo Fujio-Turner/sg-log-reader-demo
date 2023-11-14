@@ -181,7 +181,7 @@ border-radius: 15px;
   <div class="divTableRow"  ">
       <div class="divTableCell">
         <div id="sgUserListBox" style="display: inline-block;">
-        <label for="sgUserListSelct">SG Users List (Times Connected)</label>
+        <label for="sgUserListSelct">User Name (Connected Count)</label>
       </br>
         <select id = "sgUserListSelect" style="width: 200px; overflow-x:auto;" size = 10></select>
       </br>
@@ -190,6 +190,8 @@ border-radius: 15px;
         <label for="userName">Name</label>
         <input type="radio" id="userCount" name="userSort" value="count">
         <label for="userCount">Count</label>
+    </br>
+    Total Unique User Count: (<b><i><span id="userListTotalCount">Total</span></i></b>)
         </div>
       </div>
       <div class="divTableCell">
@@ -457,7 +459,9 @@ function sgUserList(){
     dataType: 'json',
     contentType:'application/json; charset=utf-8',
     success: function(data2) { 
+      var userCount = 0
           $.each(data2, function(key, value) {
+            userCount++
 
             var c = "dark"
           if(key % 2 == 0) {
@@ -467,6 +471,8 @@ function sgUserList(){
 
           $('#sgUserListSelect').append(option1)
         });
+
+        $("#userListTotalCount").html(userCount)
         }
     });
   }
