@@ -376,6 +376,10 @@ class work():
 				if "[ERR]" in x or "Error retrieving changes for channel" in x:
 					errorCount += 1
 					continue
+				if "Error " in x and ".go:" in x: 
+					# for 'revocation' changes feed errors
+					errorCount += 1
+					continue
 				if "[WRN]" in x:
 					warningCount += 1
 					continue				

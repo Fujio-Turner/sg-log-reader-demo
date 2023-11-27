@@ -47,9 +47,9 @@ You just need to:
 
 - Python 3.6 or greater
 
-- Couchbase Bucket
+- Couchbase Bucket (named: `sg-log-reader`)
 
-- Couchbase Cluster with Index and Query Service
+- Couchbase Cluster 7.x with Index and Query Service
 
 - Create the below indexes.
 
@@ -101,10 +101,11 @@ Update the config.json with:
 "log-name":"test-today-node-0",
 "file-to-parse":"sg_info.log",	    ///   "/path/to/file/here/sg_info.log" 
 "cb-cluster-host":"127.0.0.1",      /// CB SERVER Hostname HERE
-"cb-bucket-name":"sg-log-reader",   /// CB Bucket Name HERE , _default (scope&collection)
+"cb-bucket-name":"sg-log-reader",   /// CB Bucket Name HERE: sg-log-reader._default._default
 "cb-bucket-user":"Administrator",   ///  CB Bucket RBAC Username
 "cb-bucket-user-password":"fujiofujio", /// CB Bucket RBAC Password
 "dt-log-line-offset":0,
+"cb-expire":86400,                 /// Data will expire in 24 hours
 "debug":false
 }
  ```
@@ -195,6 +196,8 @@ Once you `Search` by a user on the bottom it will show you all the indivudal rep
 ### NOTES
 
 -- Its advised to "Flush" the Couchbase Bucket for each new SG environments you process.
+
+-- Docs is the `sg-log-reader` bucket by default have a TTL(expire) in 24 hours. You can change the setting in the `config.json` file.
 
 -- Logs from a Sync Gateway machine running on MS Windows might have issues as its timestamps in the logs might have a different format thus effecting the processing of Sync Gateway file.
 
