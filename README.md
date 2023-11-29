@@ -54,7 +54,7 @@ You just need to:
 - Create the below indexes.
 
 ```sql
-CREATE INDEX `sgProcessErrorsEpoch_v2` ON `sg-log-reader`(`dtFullEpoch`,`import`,`dcp`,`query`) WHERE (`docType` = "sgErrors")
+CREATE INDEX `sgProcessErrorsEpoch_v4` ON `sg-log-reader`(`dtFullEpoch`,`import`,`dcp`,`query`,`sgDb`,`ws`,`gen`) WHERE (`docType` = "sgErrors")
 ```
 
 ```sql

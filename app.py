@@ -358,9 +358,9 @@ class work():
 		q = 'SELECT ' 
 
 		if rangeData["viewBy"] and rangeData["viewBy"] in ["sec","min"]:
-			q = q + ' floor((e.`dtFullEpoch`/'+dtSplit+'))*'+dtSplit+'*1000 as `dt`, COUNT(floor((e.`dtFullEpoch`/'+dtSplit+'*1000))*'+dtSplit+') as `dtCount` , SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import` ' 
+			q = q + ' floor((e.`dtFullEpoch`/'+dtSplit+'))*'+dtSplit+'*1000 as `dt`, COUNT(floor((e.`dtFullEpoch`/'+dtSplit+'*1000))*'+dtSplit+') as `dtCount` , SUM(e.`query`) as `query` , SUM(e.`dcp`) as `dcp` , SUM(e.`import`) as `import` , SUM(e.`sgDb`) as `sgDb` , SUM(e.`ws`) as `ws`, SUM(e.`gen`) as `gen` ' 
 		else:
-			q = q + ' e.`dtFullEpoch`*1000 as `dt`, e.`query` , e.`dcp` , e.`import` ' 
+			q = q + ' e.`dtFullEpoch`*1000 as `dt`, e.`query` , e.`dcp` , e.`import` , e.`ws` , e.`gen`, e.`sgDb` ' 
 
 		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as e WHERE e.`docType` = "sgErrors" '
 		q = q + ' AND e.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 

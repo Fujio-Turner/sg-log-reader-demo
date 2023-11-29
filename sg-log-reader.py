@@ -44,6 +44,7 @@ class work():
 	oldWsDic = {}
 	sgDtLineOffset = 0
 	sgLogTag = "default"
+	logLineLen = 0
 	logLineDepthLevel = 1000
 	logLineDepthPercent = 0.02
 	logNumberOflines = 1
@@ -114,6 +115,9 @@ class work():
 			self.logData.append(line)
 			await self.importCheck(line)
 			await self.sqlCheck(line)
+			#await self.sgDb(line)  ## this is very noisey
+			await self.generalErrors(line)
+			await self.wsErrors(line)
 			#self.replicateCheck(line)
 			await self.dcpChecks(line)
 			#self.sgStarts(line)
@@ -134,6 +138,7 @@ class work():
 
 	async def findBlipLine(self,x,lineNumb):
 		if "/_blipsync" in x: 
+	
 			self.blipLineCount += 1
 			userN = await self.getUserName(x)
 			t = await self.getTimeFromLine(x)
@@ -145,6 +150,7 @@ class work():
 
 	async def findWsId(self,wsLine,index):
 		if "Upgraded to BLIP+WebSocket protocol" in wsLine or "Upgraded to WebSocket" in wsLine:
+
 			c = re.findall(r"\[([A-Za-z0-9_]+)\]", wsLine)
 			if len(c) > 1:
 				#check if ws in new or old
@@ -164,12 +170,15 @@ class work():
 			self.wasBlipLines = False
 
 	async def httpTransNumPlus(self,line):
+
 		h = line.split(" HTTP+: ")
 		r =  h[1].split(" ")
 		if "#" in r[0]:
 			return r[0] #PRE SG 3.1
 		if "#" in r[1]:
 			return r[1].replace(":", "")  #Post SG 3.1
+		if "#" in r[2]:
+			return r[2].replace(":", "")  #Post SG 3.1
 		return ""
 
 	async def httpTransNum(self,line):
@@ -224,12 +233,29 @@ class work():
 	async def getDataPerWsId(self):
 		print("Starting - Per wsId : ",datetime.datetime.now())
 		ic(self.wsIdList)
+		'''
 		list_of_tasks = []
 		for key, x in self.wsIdList.items():
 			list_of_tasks.append(self.getDataPerWsIdWorker(x))
 		result = await asyncio.gather(*list_of_tasks,return_exceptions=True)
 		ic(x,result)
 		print("Done - Per wsId : ",datetime.datetime.now())
+		'''
+		list_of_tasks = []
+		for key, x in self.wsIdList.items():
+			list_of_tasks.append(self.getDataPerWsIdWorker(x))
+		result = await asyncio.gather(*list_of_tasks, return_exceptions=True)
+
+		for idx, res in enumerate(result):
+			if isinstance(res, BaseException):
+				# Handle the exception (e.g., log the error, retry the task, etc.)
+				print(f"Task {idx} raised an exception: {res}")
+			#else:
+				# Process the result
+			#	print(f"Task {idx} returned: {res}")
+
+		print("Done - Per wsId :", datetime.datetime.now())
+
 
 	async def getDataPerWsIdWorker(self,x):
 		sinceList = []
@@ -280,7 +306,6 @@ class work():
 				"blipO":r[7],
 				"auth":True,
 				"orphane":False,
-				"cbTicket":"",
 				"log":r[0]
 				}
 		else:
@@ -301,7 +326,6 @@ class work():
 			"logTag":self.sgLogTag,
 			"auth":False,
 			"orphane":True,
-			"cbTicket":"",
 			"log":[]
 			}
 		asyncio.create_task(self.cbUpsert(w,d,self.cbTtl))
@@ -328,7 +352,9 @@ class work():
 		changesChannels = {}
 		continuous = None
 		passIt = 0
-		for x in self.logData[startLogLine:]:
+		#for x in self.logData[startLogLine:]:
+		for a in range(startLogLine,self.logNumberOflines):
+			x = self.logData[a]
 
 			if wsId in x and "WS" not in x:
 				if blipClosed == False:
@@ -349,7 +375,11 @@ class work():
 					continue
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = await self.findContinuous(x)
-					continue
+
+				if "Filter:sync_gateway/bychannel" in x:
+					filterBy = True
+					filterByChannels = await self.findChannelsList(x)
+
 				if " changes to client, from seq " in x:		
 					j = await self.findSentCount(x)
 					sent = sent + j
@@ -376,7 +406,7 @@ class work():
 				if "[ERR]" in x or "Error retrieving changes for channel" in x:
 					errorCount += 1
 					continue
-				if "Error " in x and ".go:" in x: 
+				if "Error " in x and ".go:" in x and "[WRN]" not in x: 
 					# for 'revocation' changes feed errors
 					errorCount += 1
 					continue
@@ -391,9 +421,6 @@ class work():
 				if "Upgraded to" in x and  "WebSocket protocol" in x:
 					blipOpened = True
 					continue
-				if "Filter:sync_gateway/bychannel" in x:
-					filterBy = True
-					filterByChannels = await self.findChannelsList(x)
 				
 				if "Since:" in x and "SyncMsg:" in x:
 					if "Since:0 " in x: #looks for _change since=0
@@ -456,14 +483,14 @@ class work():
 	async def dcpChecks(self,x):
 		if "DCP:" in x:
 			t = await self.getTimeFromLine(x)
-			if "error" in x:
+			if "error" in x or "Error" in x:
 				ic(t[0],x)
-				e = self.errorTempDoc(t[0],t[1],"dcp")
+				e = await self.errorTempDoc(t[0],t[1],"dcp")
 
 	async def importCheck(self,x):
 		if "Import:" in x:
 			t = await self.getTimeFromLine(x)
-			if "error" in x:
+			if "error" in x or "Error" in x:
 				ic(t[0],x)
 				r = await self.errorTempDoc(t[0],t[1],"import")
 				return r
@@ -471,10 +498,34 @@ class work():
 	async def sqlCheck(self,x):
 		if "Query:" in x:
 			t = await self.getTimeFromLine(x)
-			if "error" in x:
+			if "error" in x or "Error" in x:
 				ic(t[0],x)
 				r = await self.errorTempDoc(t[0],t[1],"query")
+				return r	
+
+	async def sgDb(self,x):
+		if " db:" in x or " db." in x:
+			t = await self.getTimeFromLine(x)
+			if "error" in x or "Error" in x:
+				ic(t[0],x)
+				r = await self.errorTempDoc(t[0],t[1],"sgDb")
 				return r			
+
+	async def wsErrors(self,x):
+		if " WS: " in x :
+			t = await self.getTimeFromLine(x)
+			if "error" in x or "Error" in x:
+				ic(t[0],x)
+				r = await self.errorTempDoc(t[0],t[1],"ws")
+				return r	
+
+	async def generalErrors(self,x):
+		if "[ERR]" in x:
+			t = await self.getTimeFromLine(x)
+			if "error" in x or "Error" in x:
+				ic(t[0],x)
+				r = await self.errorTempDoc(t[0],t[1],"gen")
+				return r	
 
 	async def errorTempDoc(self,dt,dtFullEpoch,errorElement):
 		key = dt + "::errors"
@@ -487,7 +538,7 @@ class work():
 		else:
 			#if not create Template
 			isoDt = await self.iso8601_to_epoch(dtFullEpoch)
-			j = {"docType":"sgErrors","dt":dt,"dtFullEpoch":isoDt,"import":0,"dcp":0,"query":0}
+			j = {"docType":"sgErrors","dt":dt,"dtFullEpoch":isoDt,"import":0,"dcp":0,"query":0,"sgDb":0,"ws":0,"gen":0}
 			j[errorElement] += 1
 			f = await self.cbInsert(key,j,self.cbTtl)
 			return f
@@ -694,8 +745,8 @@ class work():
 		
 	async def cbGet(self,key):
 		try:
-			result = self.cbColl.get(key)
-			r = await result.content_as[dict]
+			result = await self.cbColl.get(key)
+			r = result.content_as[dict]
 			ic(r)
 			return r
 		except DocumentNotFoundException:
@@ -800,7 +851,7 @@ if __name__ == "__main__":
 	#a.getDataPerWsId(wsIdList) 
 	##3.SG-start times
 	#a.sgStarts()
-	##4.DCP-errors-counter
+	##4.DCP-errors-counter -- Completed
 	#a.dcpChecks()
 
 	##5.n1ql-Query-times

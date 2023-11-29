@@ -107,6 +107,19 @@ border-radius: 15px;
     height: 600px;
   }
 
+  tbody td{
+  padding: 5px;
+}
+
+.text-center-row>th,
+.text-center-row>td {
+  text-align: center;
+}
+
+table {
+  width: 100%;
+}
+
 </style>
 </head>
 <body>        
@@ -127,8 +140,7 @@ border-radius: 15px;
           <div class="one" id="search">
           <input class="searchInput" type="text" id="searchByUser" name="searchByUser" placeholder="User Name (Optional)" style="width:300px;">
           <button id="search" class="search">Search</button>
-          <label for="resultSize">  Number of Results: </label><b><span id="resultSize" name="ResultSize" ></span></b>
-          </br>
+          <br>
           <label for="viewBy">X-axis view/group by: </label>
           <select name="viewBy" id="viewBy">
             <option value="">All Entries</option>
@@ -137,7 +149,6 @@ border-radius: 15px;
           </select>
           </div>
           
-
       </div>
   </div>
   <div class="divTableRow">
@@ -172,9 +183,17 @@ border-radius: 15px;
           <input type="checkbox" id="hasPullAttachments" name="hasPullAttachments" ><label for="hasPullAttachments">Pulled: Attachments</label>  
           <input type="checkbox" id="hasAttachments" name="hasAttachments" ><label for="hasAttachments">Pushed: Attachments</label>          
           <input type="checkbox" id="conflicts" name="conflicts" ><label for="conflicts">Has Conflicts</label>
-          <input type="checkbox" id="errors" name="errors" ><label for="errors">Has Errors</label>
+          <input type="checkbox" id="errors" name="errors" ><label for="errors">Has Sync Errors</label>
           <button id="resetFilters" class="reset">Reset Filters</button>
           </div>
+          <label for="resultSize">Total Sync Results:</label><b><span id="resultSize" name="ResultSize" ></span> </b>
+          <br>
+          <label for="sgErrorResultSize">Total SG Process Errors: </label><b><span id="sgErrorResultSize" name="sgErrorResultSize" ></span></b> 
+          By:[<label for="importErrorPer">Import:</label><span id="importErrorPer" name="importErrorPer" ></span>% ,
+          <label for="wsErrorPer">WebSocket:</label><span id="wsErrorPer" name="wsErrorPer" ></span>% ,
+          <label for="queryErrorPer">SQL++:</label><span id="queryErrorPer" name="queryErrorPer" ></span>% ,
+          <label for="genErrorPer">General:</label><span id="genErrorPer" name="genErrorPer" ></span>%]
+          </br>
 
       </div>
   </div>
@@ -251,6 +270,27 @@ border-radius: 15px;
 
             <div class = "userSyncStats" id="userSyncStats"></div>
 
+            <!-- 
+            <table id="userSyncStatsTable">
+              <thead>
+                <tr class="text-center-row">
+                  <th>Time</th>
+                  <th>WebSocket Id</th>
+                  <th>Connected Time(sec)</th>
+                  <th>_changes sent</th>
+                  <th>Docs Pulled</th>
+                  <th>Docs Pushed</th>
+                  <th>_change Cache Hit %</th>
+                  <th>Sync Closed(blip ended)</th>
+                  <th>Conflicts</th>
+                  <th>Errors</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+            -->
+            
       </div>
   </div>
   </div>
@@ -514,7 +554,11 @@ function sgUserList(){
       return
     }
 
-    var valuesErrorCount = []
+    var valuesErrorCount = 0
+    var queryErrorCount = 0
+    var importErrorCount = 0
+    var wsErrorCount = 0
+    var genErrorCount = 0
 
     var newDataset =   {
       label: "SG Process Errors",
@@ -525,13 +569,29 @@ function sgUserList(){
 
 
     $.each(data2, function(key, value) {  
-        var tErrors = value.query + value.dcp + value.import
-        var gTime = value.dt
+        queryErrorCount += value.query;
+        importErrorCount += value.import;
+        wsErrorCount += value.ws;
+        genErrorCount += value.gen;
+        
+        var tErrors = value.query + value.dcp + value.import + value.sgDb + value.ws + value.gen;
+        valuesErrorCount += tErrors;
+        var gTime = value.dt;
         newDataset.data.push({x:gTime,y:tErrors})
         });
       
     c1.config.data.datasets.push(newDataset);
     c1.update();
+
+    $('#sgErrorResultSize').html(valuesErrorCount)
+    var qPer = (queryErrorCount/valuesErrorCount) * 100
+    $("#queryErrorPer").html(qPer.toFixed(1))
+    var importPer = (importErrorCount/valuesErrorCount) * 100
+    $("#importErrorPer").html(importPer.toFixed(1))
+    var wsPer = (wsErrorCount/valuesErrorCount) * 100
+    $("#wsErrorPer").html(wsPer.toFixed(1))
+    var genPer = (genErrorCount/valuesErrorCount) * 100
+    $("#genErrorPer").html(genPer.toFixed(1))
   
   }
 
@@ -693,7 +753,7 @@ function  makeChartDiffSecStat(data){
         legend: { display: false }, 
       title: {
         display: true,
-        text: 'Device Connected/Sync Time Length'
+        text: 'CBL Connected Times'
       }
     },
       maintainAspectRatio: false,
@@ -1136,7 +1196,8 @@ c3 = new Chart(ctx3, {
 
       $.each(data, function(key, value) {  
 
-        
+      
+
         var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dtClock +"</b>";
           html = html + ' <b>wsId:</b> ' +value.cbKey;
           html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec+ " ";
@@ -1176,8 +1237,50 @@ c3 = new Chart(ctx3, {
             html = html + ' <b>Errors:</b> ' +value.errors;
           }
          html = html + '</div></br><div class="wsIdDetailRow" id="wsIdDetails-'+value.cbKey+'"></div>';
-        $('#userSyncStats').append(html) ;    
+        $('#userSyncStats').append(html) ;  
+     /*
+          var row = '<tr class="text-center-row">'
+          row = row + "<td>" +value.dtClock+"</td>"
+          row = row + "<td>"+value.cbKey+ "</td>" 
+          row = row + "<td>"+value.dtDiffSec +"</td>"
+          row = row + "<td>" + value.tRow.toLocaleString() + "</td>"
+
+          if(value.tRow === value.sentCount){
+            row = row + '<td>' +value.sentCount.toLocaleString()+'</td>'
+          }else{
+            row = row + '<td><span style="color: orange;">' +value.sentCount.toLocaleString()+'</span></td>';
+          }
+          row = row + "<td>"+ value.pushCount.toLocaleString() +"</td>"
+
+          row = row + '<td>' + r + '</td>';
+
+          if(value.blipC === true){
+          row = row + '<td><span style="color: green;">Yes</span></td>';
+          }else{
+          row = row + '<td><span style="color: orange;">No</span></td>';
+          }
+
+
+
+          if(value.conflicts > 0){
+            row = row + '<td><span style="color: orange;">' +value.conflicts+"</span></td>";
+          }else{
+            row = row + '<td>' +value.conflicts + '</td>'
+          }
+
+          if(value.errors > 0){
+            row = row + '<td><span style="color: red;">' +value.errors+"</span></td>";
+          }else{
+            row = row + '<td>' +value.errors + '</td>'
+          }
+          row = row + "</tr>"
+
+        $("#userSyncStatsTable tbody").append(row);
+        */
+
        });
+
+      // $("tr:odd").css({"background-color":"#D5D5D5"});
   }
   
 
