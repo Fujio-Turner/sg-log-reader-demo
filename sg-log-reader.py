@@ -29,7 +29,7 @@ class work():
 
 	debug = False
 	cb = None
-	sgLogName = "sg_debug.log"
+	sgLogName = "sg_info.log"
 	cbHost = "127.0.0.1"
 	cbUser = "Administrator"
 	cbPass = "fujiofujio"
@@ -104,29 +104,29 @@ class work():
 
 	async def openSgLogFile(self):
 		index = 0	
+		print("Opening SG Log File: ",self.sgLogName)
 		print("Starting - Reading Data File: ",datetime.datetime.now())
-		with open(self.sgLogName, "r") as a:
-			b = [line.strip() for line in a.readlines()]
+		#with open(self.sgLogName, "r") as a:
+		#	b = [line.strip() for line in a.readlines()]
 		counter = 1
-		for x in b:
-			counter +=1
-			ic(x)
-			line = x.rstrip('\r|\n')
-			self.logData.append(line)
-			await self.importCheck(line)
-			await self.sqlCheck(line)
-			#await self.sgDb(line)  ## this is very noisey
-			await self.generalErrors(line)
-			await self.wsErrors(line)
-			#self.replicateCheck(line)
-			await self.dcpChecks(line)
-			#self.sgStarts(line)
-			if self.wasBlipLines == True:
-				ic(line)
-				await self.findWsId(line,index)
-
-			await self.findBlipLine(line,index)
-			index +=1
+		with open(self.sgLogName, "r") as a:
+			for x in a:
+				counter +=1
+				ic(x)
+				line = x.rstrip('\r|\n')
+				self.logData.append(line)
+				await self.importCheck(line)
+				await self.sqlCheck(line)
+				#await self.sgDb(line)  ## this is very noisey
+				await self.generalErrors(line)
+				await self.wsErrors(line)
+				#self.replicateCheck(line)
+				await self.dcpChecks(line)
+				#self.sgStarts(line)
+				if self.wasBlipLines == True:
+					await self.findWsId(line,index)
+				await self.findBlipLine(line,index)
+				index +=1
 		self.logNumberOflines = counter
 		self.logLineDepthLevel = counter * self.logLineDepthPercent
 		print("Number - Lines in log file: ",counter)
@@ -137,8 +137,7 @@ class work():
 
 
 	async def findBlipLine(self,x,lineNumb):
-		if "/_blipsync" in x: 
-	
+		if "/_blipsync" in x and "GUEST" not in x: 
 			self.blipLineCount += 1
 			userN = await self.getUserName(x)
 			t = await self.getTimeFromLine(x)
@@ -150,7 +149,6 @@ class work():
 
 	async def findWsId(self,wsLine,index):
 		if "Upgraded to BLIP+WebSocket protocol" in wsLine or "Upgraded to WebSocket" in wsLine:
-
 			c = re.findall(r"\[([A-Za-z0-9_]+)\]", wsLine)
 			if len(c) > 1:
 				#check if ws in new or old

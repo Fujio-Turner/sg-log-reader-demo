@@ -1,5 +1,5 @@
 {
-"log-name":"test-today-node-0",
+"log-name":"sg_info.log",
 "file-to-parse":"sg_info.log",	
 "cb-cluster-host":"127.0.0.1",
 "cb-bucket-name":"sg-log-reader",
