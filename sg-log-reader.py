@@ -364,12 +364,12 @@ class work():
 				if "GetCachedChanges(\"" in x:
 					c = await self.changeCacheCount(x)
 					channelRow = channelRow + c[0]
-					changesChannels[c[1]] = None
+					changesChannels[c[1]] = True
 					continue
 				if "GetChangesInChannel(" in x:
 					d = self.changeQueryCount(x)					
 					queryRow = queryRow + d[0]
-					changesChannels[d[1]] = None
+					changesChannels[d[1]] = True
 					continue
 				if " Continuous:" in x and " SyncMsg:" in x:
 					continuous = await self.findContinuous(x)
