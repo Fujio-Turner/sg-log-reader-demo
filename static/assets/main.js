@@ -71,6 +71,19 @@ $(document).ready(function(){
 
 getSampleDt()
 
+$('#wsDetails').hide();
+
+
+$("#userSyncStatsTable").on("click", "tr", function() {
+    var ws = $(this).find("td").eq(1).text();
+    console.log(ws);
+   $.notify("WebSocket Details for: "+ws,'success')
+    userSyncDetails(ws)
+    $('#wsDetails').show('slow');
+  });
+
+
+
 dtConfig = {
   format:'YYYY-MM-DDTHH:mm:ss',
   time: {
@@ -873,21 +886,16 @@ c3 = new Chart(ctx3, {
 
   function makeUserDetails(data){
     $('#userSyncStats').empty();
-    //viewByValue = $("#viewBy").val()
-    //$("#viewBy").val("")
-    //$("#viewBy").prop("disabled", true);
-
+    $("#userSyncStatsTable  tbody").empty();
 
     //$.notify('graph x-axis view by: "All Entries" when user search',"info");
 
-
       $.each(data, function(key, value) {  
 
-      
-
-        var html = '<div class="userDetailList" ondblclick="closeUserDetails(\''+value.cbKey+'\');" onclick=" openUserDetails(\''+value.cbKey+'\');  userSyncDetails(\''+value.cbKey+'\');" <b>'+value.dtClock +"</b>";
-          html = html + ' <b>wsId:</b> ' +value.cbKey;
-          html = html + ' <b>Connect Time(sec):</b> ' +value.dtDiffSec+ " ";
+          var row = '<tr class="text-center-row">'
+          row = row + "<td>" +value.dtClock+"</td>"
+          row = row + "<td>"+value.cbKey+ "</td>" 
+          row = row + "<td>"+value.dtDiffSec +"</td>"
 
           var r = "";
           if (value.tRow > 0){
@@ -895,41 +903,8 @@ c3 = new Chart(ctx3, {
           var r = r.toFixed(1);
           }
 
-          html = html + ' <b>_changes Sent:</b> ' +value.tRow.toLocaleString(); 
+          row = row + '<td>' + r + '</td>';
 
-          if(value.tRow === value.sentCount){
-            html = html + ' <b>Docs Pulled:</b> ' +value.sentCount.toLocaleString();
-          }else{
-            html = html + ' <b>Docs Pulled:</b> <span style="color: orange;">' +value.sentCount.toLocaleString()+"</span>";
-          }
-
-          html = html + ' <b>Docs Pushed:</b> <span>' +value.pushCount.toLocaleString()+"</span>";
-
-          html = html + ' <b>_changes Cache Hit:</b> ' + r + "% ";
-          if(value.blipC === true){
-          html = html + ' <b>Sync Closed(blip ended):</b> <span style="color: green;">Yes</span>';
-          }else{
-          html = html + ' <b>Sync Closed(blip ended):</b> <span style="color: orange;">No</span>';
-          }
-
-          if(value.conflicts > 0){
-            html = html + ' <b>Conflicts:</b> <span style="color: orange;">' +value.conflicts+"</span>";
-          }else{
-            html = html + ' <b>Conflicts:</b> ' +value.conflicts;
-          }
-          
-          if(value.errors > 0){
-            html = html + ' <b>Errors:</b> <span style="color: red;">' +value.errors+"</span>";
-          }else{
-            html = html + ' <b>Errors:</b> ' +value.errors;
-          }
-         html = html + '</div></br><div class="wsIdDetailRow" id="wsIdDetails-'+value.cbKey+'"></div>';
-        $('#userSyncStats').append(html) ;  
-     /*
-          var row = '<tr class="text-center-row">'
-          row = row + "<td>" +value.dtClock+"</td>"
-          row = row + "<td>"+value.cbKey+ "</td>" 
-          row = row + "<td>"+value.dtDiffSec +"</td>"
           row = row + "<td>" + value.tRow.toLocaleString() + "</td>"
 
           if(value.tRow === value.sentCount){
@@ -939,7 +914,6 @@ c3 = new Chart(ctx3, {
           }
           row = row + "<td>"+ value.pushCount.toLocaleString() +"</td>"
 
-          row = row + '<td>' + r + '</td>';
 
           if(value.blipC === true){
           row = row + '<td><span style="color: green;">Yes</span></td>';
@@ -963,18 +937,20 @@ c3 = new Chart(ctx3, {
           row = row + "</tr>"
 
         $("#userSyncStatsTable tbody").append(row);
-        */
+
+        $('#wsDetails').empty();
+    
 
        });
-
-      // $("tr:odd").css({"background-color":"#D5D5D5"});
   }
   
 
 
 function userSyncDetails(wsId){
 
-  $('#wsIdDetails-'+wsId).empty();
+  $('#wsDetails').empty();
+  
+
   data1 = {'wsId':wsId}
 
   $.ajax({
@@ -989,7 +965,7 @@ function userSyncDetails(wsId){
           html = html + '  <b>Filtered By Channel(s):</b> ' + data2["filterBy"] + ' </br>'
           html = html + '  <b>Since:</b> ' + data2["since"] + ' </br>'
           html = html + wsIdMakeHtml(data2["log"])
-          $('#wsIdDetails-'+wsId).html(html)
+          $('#wsDetails').html(html)
         }
     });
   }
@@ -998,6 +974,8 @@ function userSyncDetails(wsId){
 function wsIdMakeHtml(data){
   var html = '<b>Raw Sync Log</b> </br>'
   $.each(data, function(key, value) {
+
+    var value = value.replace(/(error|Error)/g, '<mark>$1</mark>');
 
     var c = "dark"
     if(key % 2 == 0) {
