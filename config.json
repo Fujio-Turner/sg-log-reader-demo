@@ -1,6 +1,6 @@
 {
 "log-name":"sg_info.log",
-"file-to-parse":"/sg_info.log",	
+"file-to-parse":"/Users/fujio.turner/Downloads/abc/pepsi/56569/2023-11-30/sgcollect_info_pepldz00998_20231130-113920/sg_info.log",	
 "cb-cluster-host":"127.0.0.1",
 "cb-bucket-name":"sg-log-reader",
 "cb-bucket-user":"Administrator",

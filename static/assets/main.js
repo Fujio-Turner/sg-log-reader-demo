@@ -75,8 +75,7 @@ $('#wsDetails').hide();
 
 
 $("#userSyncStatsTable").on("click", "tr", function() {
-    var ws = $(this).find("td").eq(1).text();
-    console.log(ws);
+    var ws = $(this).find("td").eq(2).text();
    $.notify("WebSocket Details for: "+ws,'success')
     userSyncDetails(ws)
     $('#wsDetails').show('slow');
@@ -893,8 +892,19 @@ c3 = new Chart(ctx3, {
       $.each(data, function(key, value) {  
 
           var row = '<tr class="text-center-row">'
+          var counter = key + 1;
+          row = row + "<td>" + counter +"</td>"
           row = row + "<td>" +value.dtClock+"</td>"
           row = row + "<td>"+value.cbKey+ "</td>" 
+
+          var syncType = "n/a"
+
+          if(value.since[0] != "0" ){syncType = "Old"}
+          if(value.since[0] == "0" ){syncType = "<b>New</b>"}
+
+          row = row + '<td>'+syncType+'</td>'
+
+
           row = row + "<td>"+value.dtDiffSec +"</td>"
 
           var r = "";
@@ -961,6 +971,7 @@ function userSyncDetails(wsId){
     contentType:'application/json; charset=utf-8',
     success: function(data2) { 
           var html = ''
+          html = html + '<b>WebSocket Id:</b> '+wsId+'</br>'
           html = html + ' <b>Connection Start:</b> '+ data2['dt']+' <b>End:</b> ' + data2["dtEnd"] + ' <b>Connection Time(sec):</b> '+ data2['dtDiffSec']+'</br>'
           html = html + '  <b>Filtered By Channel(s):</b> ' + data2["filterBy"] + ' </br>'
           html = html + '  <b>Since:</b> ' + data2["since"] + ' </br>'
