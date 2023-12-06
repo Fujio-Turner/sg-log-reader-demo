@@ -1,5 +1,7 @@
+import sys
 from datetime import timedelta
 from icecream import ic
+import json
 
 import traceback
 
@@ -9,7 +11,6 @@ import couchbase.subdocument as SD
 from couchbase.options import (ClusterOptions, ClusterTimeoutOptions, QueryOptions)
 from couchbase.exceptions import CouchbaseException
 from couchbase.exceptions import DocumentNotFoundException
-
 
 from flask import Flask,render_template,request
 
@@ -33,9 +34,22 @@ class work():
 	sgDtLineOffset = 0
 	sgLogTag = "default"
 
-	def __init__(self):
+	def __init__(self,file):
+		self.readConfigFile(file)
 		self.debugIceCream()
 		self.makeCB()
+
+	def readConfigFile(self,configFile):
+		a = open(configFile, "rb" )
+		b = json.loads(a.read())
+		self.sgLogName = b["file-to-parse"]
+		self.cbHost = b["cb-cluster-host"]
+		self.cbBucketName = b["cb-bucket-name"]
+		self.cbUser = b["cb-bucket-user"]
+		self.cbPass = b["cb-bucket-user-password"]
+		self.debug = b["debug"]
+		self.sgLogTag = b["log-name"]
+		a.close()
 
 	def makeCB(self):
 		try:
@@ -407,7 +421,7 @@ class work():
 			return []
 
 
-cb = work()
+
 
 app = Flask(__name__)
 
@@ -476,7 +490,14 @@ def lastWsIdEpoch():
     return cb.lastWsEpoch()
 
 
-from flask import Flask
-
 if __name__ == "__main__":
+
+	if len(sys.argv) > 1:
+		configFile = sys.argv[1]
+	else:
+		print("Error: No config.json file given")
+		exit()
+
+	cb = work(configFile)
+
 	app.run(debug = False , host="0.0.0.0" , port=8080)

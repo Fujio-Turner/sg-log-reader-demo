@@ -137,7 +137,7 @@ After you get the above `Done - Per wsId: ...` data should be in your Couchbase 
 To get to a dashboard to see stats you'll run a local python Flask Web Server. Run the Command below to start the web server.
 
 ```console
-# python3 app.py
+# python3 app.py config.json
 ```
 
 OUTPUT should look something like this.
