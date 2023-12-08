@@ -282,6 +282,8 @@ function sgUserList(){
     c1.config.data.datasets.push(newDataset);
     c1.update();
 
+    syncZoom(c1,c2)
+
     $('#sgErrorResultSize').html(valuesErrorCount)
     var qPer = (queryErrorCount/valuesErrorCount) * 100
     $("#queryErrorPer").html(qPer.toFixed(1))
@@ -293,7 +295,6 @@ function sgUserList(){
     $("#genErrorPer").html(genPer.toFixed(1))
   
   }
-
 
 
   function bigSearch(){
@@ -470,6 +471,30 @@ function  makeChartDiffSecStat(data){
 }
 
 
+function syncZoom(sourceChart,targetChart){
+  const sourceXAxis = sourceChart.scales.x;
+  const targetXAxis = targetChart.scales.x;
+  targetXAxis.options.min = sourceXAxis.min;
+  targetXAxis.options.max = sourceXAxis.max;
+  targetChart.update()
+  
+ /*
+
+  const minTime = new Date(sourceXAxis.min);
+  const minLocal = minTime.toLocaleString();
+  const forDtMin = new Date(minLocal).toISOString().slice(0, 19); 
+
+
+  const maxTime = new Date(sourceXAxis.max);
+  const maxLocal = maxTime.toLocaleString();
+  const forDtMax = new Date(maxLocal).toISOString().slice(0, 19); 
+
+  $('#zoomTimeMin').val(forDtMin)
+  $('#zoomTimeMax').val(forDtMax)
+  */
+}
+
+
 function makeChart(data){
 
   if(typeof c1 !== 'undefined' || typeof c2 !== 'undefined'){
@@ -602,7 +627,10 @@ function makeChart(data){
         zoom: {
           pan:{
                 enabled: true,
-                mode: 'x'
+                mode: 'x',
+            onPanComplete: function({chart}){
+              syncZoom(chart,c2);
+            }
               },
             zoom: {
               mode: 'x',
@@ -612,10 +640,12 @@ function makeChart(data){
                   borderColor: "#AFADAD",
                   borderWidth: 1,
                   modifierKey: 'shift'
-              }
+              },
+            onZoomComplete: function({chart}){
+              syncZoom(chart,c2);
+            }
             }
           }
-        
         }  
     }
   });
@@ -650,7 +680,10 @@ function makeChart(data){
         zoom: {
           pan:{
                 enabled: true,
-                mode: 'x'
+                mode: 'x',
+                onPanComplete: function({chart}){
+                  syncZoom(chart,c1);
+                }
               },
             zoom: {
               mode: 'x',
@@ -660,7 +693,10 @@ function makeChart(data){
                   borderColor: "#AFADAD",
                   borderWidth: 2,
                   modifierKey: 'shift'
-              }
+              },
+            onZoomComplete: function({chart}){
+              syncZoom(chart,c1);
+            }
             }
           }
       },
@@ -1029,6 +1065,15 @@ function userFill(username){
  function openUserDetails(divId){
    $("#wsIdDetails-"+divId).show();
  }
+
+$("#changeSeachTimes").click(function(){
+  var zooTimeMin = $("#zoomTimeMin").val()
+  var zooTimeMax = $("#zoomTimeMax").val()
+
+  $("#dtFrom").val(zooTimeMin)
+  $("#dtTo").val(zooTimeMax)
+  $.notify("Updated Search Time Ranges: CLICK SEARCH",'success')
+});
 
  $('.zoomReset').click(function(){
     c1.resetZoom();
