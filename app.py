@@ -195,24 +195,38 @@ class work():
 			ic(traceback.format_exc())
 			return []
 		
-	def cbDtDiffStatsEpoch(self,rangeData):
+	def cbStatsRange(self,rangeData,rType):
 
 			ic(rangeData)
 			if 'sgDb' not in rangeData or not rangeData["sgDb"]:
 				return []
 			
 			q = 'SELECT COUNT(t.tRange) as tCount, tRange FROM ('
-			q = q + ' SELECT CASE WHEN u.dtDiffSec <=1 then "01. 1 Sec or less" '
-			q = q + ' WHEN u.dtDiffSec between 2 and 10 then "02. 2 to 10 Sec" '
-			q = q + ' WHEN u.dtDiffSec between 11 and 30 then "03. 11 to 30 Sec" '
-			q = q + ' WHEN u.dtDiffSec between 31 and 60 then "04. 31 to 60 Sec" '
-			q = q + ' WHEN u.dtDiffSec between 61 and 120 then "05. 1 to 2 minutes" '
-			q = q + ' WHEN u.dtDiffSec between 121 and 300 then "06. 2 to 5 minutes" '
-			q = q + ' WHEN u.dtDiffSec between 301 and 900 then "07. 5 to 15 minutes" '
-			q = q + ' WHEN u.dtDiffSec between 901 and 1800 then "08. 15 to 30 minutes" '
-			q = q + ' WHEN u.dtDiffSec between 1801 and 3600 then "09. 30 to 60 minutes" '
-			q = q + ' WHEN u.dtDiffSec > 3601 then "10. 60 minutes or more"' 
-			q = q + ' else "11. n/a" '
+
+			if rType == "cblTime":
+				q = q + ' SELECT CASE WHEN u.dtDiffSec <=1 then "01. 1 Sec or less" '
+				q = q + ' WHEN u.dtDiffSec between 2 and 10 then "02. 2 to 10 Sec" '
+				q = q + ' WHEN u.dtDiffSec between 11 and 30 then "03. 11 to 30 Sec" '
+				q = q + ' WHEN u.dtDiffSec between 31 and 60 then "04. 31 to 60 Sec" '
+				q = q + ' WHEN u.dtDiffSec between 61 and 120 then "05. 1 to 2 minutes" '
+				q = q + ' WHEN u.dtDiffSec between 121 and 300 then "06. 2 to 5 minutes" '
+				q = q + ' WHEN u.dtDiffSec between 301 and 900 then "07. 5 to 15 minutes" '
+				q = q + ' WHEN u.dtDiffSec between 901 and 1800 then "08. 15 to 30 minutes" '
+				q = q + ' WHEN u.dtDiffSec between 1801 and 3600 then "09. 30 to 60 minutes" '
+				q = q + ' WHEN u.dtDiffSec > 3601 then "10. 60 minutes or more"' 
+				q = q + ' else "11. n/a" '
+
+			if rType == "changesSent":
+				q = q + ' SELECT CASE WHEN u.tRow = 0 then "01. Zero" '
+				q = q + ' WHEN u.tRow between 1 and 10 then "02. 1 to 10" '
+				q = q + ' WHEN u.tRow between 11 and 100 then "03. 11 to 100" '
+				q = q + ' WHEN u.tRow between 101 and 1000 then "04. 101 to 1K" '
+				q = q + ' WHEN u.tRow between 1001 and 100000 then "05. 1K to 100K" '
+				q = q + ' WHEN u.tRow between 100001 and 1000000 then "06. 100K to 1M" '
+				q = q + ' WHEN u.tRow between 1000001 and 10000000 then "07. 1M to 10M" '
+				q = q + ' WHEN u.tRow > 10000000 then "08. 10M+" '
+				q = q + ' else "09. n/a" '
+
 			q = q + ' END  as tRange '
 			q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId" '
 			q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 
@@ -276,7 +290,7 @@ class work():
 				ic(traceback.format_exc())
 				return []
 
-
+	
 	def cbUserSearch(self,userName):
 		try:
 			return self.cbColl.get(wsId).value
@@ -443,11 +457,19 @@ def dateRangeEpoch():
 def dateDiffSecEpoch():
 	if request.method == 'POST':
 		ic(request.json)
-		a = cb.cbDtDiffStatsEpoch(request.json)
+		a = cb.cbStatsRange(request.json,"cblTime")
 		return a
 	else:
 		return []
 
+@app.route('/changeRangeSentStats', methods=['POST'])
+def changeRange():
+	if request.method == 'POST':
+		ic(request.json)
+		a = cb.cbStatsRange(request.json,"changesSent")
+		return a
+	else:
+		return []
 
 @app.route('/wsId',methods=['POST'])
 def getWsId():

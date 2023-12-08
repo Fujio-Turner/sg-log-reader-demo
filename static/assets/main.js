@@ -358,6 +358,18 @@ function sgUserList(){
         }
     });
 
+
+    $.ajax({
+      type: 'POST',
+      url: '/changeRangeSentStats',
+      data: JSON.stringify(data1),
+      dataType: 'json',
+      contentType:'application/json; charset=utf-8',
+      success: function(data4) { 
+       makeChartChangeRange(data4)
+      }
+  });
+
 }
 
 function bigSearchPie(){
@@ -469,6 +481,70 @@ function  makeChartDiffSecStat(data){
     }
   });
 }
+
+
+function  makeChartChangeRange(data){
+
+  if(typeof c7 !== 'undefined'){
+        c7.destroy(); 
+        }
+
+        labelsJ = []
+        valuesDiffCount = []
+        var ctx7 = document.getElementById('myChart7');
+
+        $.each(data, function(key, value) {  
+        valuesDiffCount.push(value.tCount)
+        labelsJ.push(value.tRange.substring(4)) 
+        });
+
+
+    c7 = new Chart(ctx7, {
+    type: 'bar',
+    data: {
+      labels: labelsJ,
+      datasets: [
+      {
+        label: '_changes Sent',
+        data: valuesDiffCount,
+        borderWidth: 2,
+        type:'bar',
+        borderColor: '#FFA955',
+        backgroundColor: '#FFCFA3'
+      }
+    ]
+    },
+    options: {
+      plugins: {
+        datalabels: { 
+                anchor: 'end',
+                align: 'top',
+                formatter: Math.round,
+                font: {
+                    weight: 'bold',
+                    size: 16
+                }
+            },
+        legend: { display: false }, 
+      title: {
+        display: true,
+        text: '_changes Sent'
+      }
+    },
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+
+        },
+        x: {
+
+        },
+        
+      }
+    }
+  });
+}
+
 
 
 function syncZoom(sourceChart,targetChart){
