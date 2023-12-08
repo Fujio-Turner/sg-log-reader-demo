@@ -52,7 +52,6 @@ class work():
 	cbTtl = 86400
 
 
-
 	def __init__(self,file):
 		asyncio.run(self.main(file))
 
@@ -120,9 +119,9 @@ class work():
 				#await self.sgDb(line)  ## this is very noisey
 				await self.generalErrors(line)
 				await self.wsErrors(line)
-				#self.replicateCheck(line)
+				#await self.replicateCheck(line)
 				await self.dcpChecks(line)
-				#self.sgStarts(line)
+				#await self.sgStarts(line)
 				if self.wasBlipLines == True:
 					await self.findWsId(line,index)
 				await self.findBlipLine(line,index)
@@ -350,6 +349,27 @@ class work():
 		changesChannels = {}
 		continuous = None
 		passIt = 0
+		wsProcData = {
+					'logLine':[],
+					'channelRow':0,
+					'queryRow':0,
+					'conflictCount':0,
+					'errorCount':0,
+					'warningCount':0,
+					'sent':0,
+					'pullAttCount':0,
+					'attSuc':0,
+					'pushCount':0,
+					'pushAttachCount':0,
+					'since':None,
+					'filterBy':False,
+					'blipClosed':False,
+					'blipOpened':False,
+					'filterByChannels':[],
+					'changesChannels':{},
+					'continuous':None,
+					'passIt':0
+					}
 		#for x in self.logData[startLogLine:]:
 		for a in range(startLogLine,self.logNumberOflines):
 			x = self.logData[a]
