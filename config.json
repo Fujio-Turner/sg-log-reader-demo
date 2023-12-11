@@ -1,10 +1,10 @@
 {
-"log-name":"sg_info.log",
-"file-to-parse":"sg_info.log",	
+"file-to-parse":"sg_info.log",
 "cb-cluster-host":"127.0.0.1",
 "cb-bucket-name":"sg-log-reader",
 "cb-bucket-user":"Administrator",
 "cb-bucket-user-password":"fujiofujio",
+"log-name":"sg_info.log",
 "cb-expire":86400,
 "dt-log-line-offset":0,
 "debug":false
