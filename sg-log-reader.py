@@ -450,8 +450,10 @@ class work():
 				passIt += 1
 			if passIt >= self.logLineDepthLevel:
 				filterByChannels.sort()
+				changesChannels = sorted(changesChannels.keys())
 				return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc,changesChannels,pullAttCount]
 		filterByChannels.sort()
+		changesChannels = sorted(changesChannels.keys())
 		return [logLine,since,channelRow,queryRow,filterBy,filterByChannels,blipClosed,blipOpened,continuous,conflictCount,errorCount,warningCount,sent,pushAttachCount,pushCount,attSuc,changesChannels,pullAttCount]
 
 	async def changeCacheCount(self,line):
