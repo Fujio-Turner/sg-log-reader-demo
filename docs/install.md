@@ -1,5 +1,19 @@
 ## Step 2. - Install & Configure
 
+## Download the SG-Log-Reader-demo 
+
+From the github.com/fujio-turner/sg-log-reader-demo repo
+
+Click Here [SG-Log-Reader-Demo Code](https://github.com/Fujio-Turner/sg-log-reader-demo)
+You can clone the repo or just download it as a zip file and unzip it too.
+```console
+git clone https://github.com/Fujio-Turner/sg-log-reader-demo.git
+```
+OR
+Download the as a ZIP file
+<img title="Download Github Code as a Zip" alt="Download Github Code as a Zip" src="https://helpdeskgeek.com/wp-content/pictures/2021/06/11CodeButtonDownloadZip.png">
+
+
 ## Install 
 
 Python Virtual Environment:
@@ -12,8 +26,9 @@ Homebrew install
 ```console
 # brew install pipenv
 ```
+Now open up a terminal and `cd` to the folder that you downloaded the sg-log-reader-demo into.
 
-Running the code by creating a Python Virtual Environment
+Once your in the above folder running this code by creating a Python Virtual Environment
 
 ```console
 # pipenv shell 
@@ -39,14 +54,14 @@ A: Click Here: [FAQ - sg_info.log](/faq)
 
  ```json
  {
-"file-to-parse":"sg_info.log",	    ///   "/path/to/file/here/sg_info.log" 
-"cb-cluster-host":"127.0.0.1",      /// CB SERVER Hostname HERE
-"cb-bucket-name":"sg-log-reader",   /// CB Bucket Name HERE: sg-log-reader._default._default
-"cb-bucket-user":"Administrator",   ///  CB Bucket RBAC Username
+"file-to-parse":"sg_info.log",	        /// "/path/to/file/here/sg_info.log" 
+"cb-cluster-host":"127.0.0.1",          /// CB SERVER Hostname HERE
+"cb-bucket-name":"sg-log-reader",       /// CB Bucket Name HERE: sg-log-reader._default._default
+"cb-bucket-user":"Administrator",       ///  CB Bucket RBAC Username
 "cb-bucket-user-password":"fujiofujio", /// CB Bucket RBAC Password
-"cb-expire":86400,                 ///Optional: Data will expire in 24 hours
-"log-name":"test-today-node-0",  ///Optional: if you process multiple SG nodes you can tag the logs source here.
-"dt-log-line-offset":0,          ///Optional: Sometime Windows Machine add address spaces in the timestamp in front.
+"cb-expire":86400,                         /// Optional: Data will expire in 24 hours
+"log-name":"test-today-node-0",            /// Optional: if you process multiple SG nodes you can tag the logs source here.
+"dt-log-line-offset":0,                    /// Optional: Sometime Windows Machine add address spaces in the timestamp in front.
 "debug":false
 }
  ```
