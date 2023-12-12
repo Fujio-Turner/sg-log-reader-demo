@@ -1,34 +1,34 @@
 ### FAQ
-**Q:** What version of Python do I need?
-
-**A:** Python 3.6+ 
-
-**Q:** Is there any configuration to the script?
-
-**A:** Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket.
-
-**Q:** What version of SG logs will it work on?
-
-**A:** Its been testing with SG version 2.8.x to 3.0.1. Sorta works with 3.1.x
 
 
-**Q:** What is the `sg_info.log` ?
++ What version of Python do I need ? +
 
-**A:** Its a file with the current general history of SG's general process and Websocket connection information from devices (CBL) to help debug issues.
+  Python 3.6+
 
++ Is there any configuration to the script ? +
 
-**Q:** Where do I get this `sg_info.log` from? Where is it at?
-
-**A:** The default location for the SG log files are `/home/sync_gateway/logs/` there you will find `sg_info.log` OR do a [_sgcollect_info](https://docs.couchbase.com/sync-gateway/current/rest-api-admin.html#/Server/post__sgcollect_info) locally on the running SG machine and it will create a zip with a bunch of SG logs and in it `sg_info.log` is also included.
-
-
-**Q:** My Docs in the `sg-log-reader` bucket are gone?
-
-**A:** Docs is the `sg-log-reader` bucket by default have a TTL(expire) in 24 hours. You can change the setting in the `config.json` file. Click here to [Configure JSON](/install)
-
-**Q:** If I have 2 or more SGsƒ behind a load balancer can I process them together and see the results in the dashboard?
-
-**Q:** If I have 2 or more SGs behind a load balancer can I process them together and see the results in the dashboard?
+  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket.
 
 
-**A:** Yes you can be they will have different Websocket IDs. In the `config.json` there is a field to seperate the source. `"log-name":"test-today-node-0",  ///Optional: if you process multiple SG nodes you can tag the logs source here.` But there currently no way in the Dashboard to see which logs are from which SG node.
++ Is What version of SG logs will it work on ? +
+
+  Its been testing with SG version 2.8.x to 3.0.1. Sorta works with 3.1.x
+
++ Is there any configuration to the script ? +
+
+  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket.
+
+
+  + What is the `sg_info.log` ? +
+
+  Its a file with the current general history of SG's general process and Websocket connection information from devices (CBL) to help debug issues.
+
+
+  + Where do I get this `sg_info.log` from ? Where is it at ? +
+
+  The default location for the SG log files are `/home/sync_gateway/logs/` there you will find `sg_info.log` OR do a [_sgcollect_info](https://docs.couchbase.com/sync-gateway/current/rest-api-admin.html#/Server/post__sgcollect_info) locally on the running SG machine and it will create a zip with a bunch of SG logs and in it `sg_info.log` is also included.
+
+  + If I have 2 or more SGs behind a load balancer can I process them together and see the results in the dashboard ? +
+
+  Yes you can be they will have different Websocket IDs. In the `config.json` there is a field to seperate the source. `"log-name":"test-today-node-0",  ///Optional: if you process multiple SG nodes you can tag the logs source here.` But there currently no way in the Dashboard to see which logs are from which SG node.
+

@@ -37,7 +37,7 @@ You can click on the line charts and PAN left or right by dragging it. If you ho
 On the left it will show you all the SG users who made connections in the DatesTime window selected above plus how many times they connected in that time window. 
 You can sort the list alphabetically(default) or by most number of connections per user.
 
-##### Just Click User Name:
+##### Click User Name:
 Just click the name of the user and it will pre populate the filter by username input box ,above, and then just click <button>Search</button> to filter and populate charts and stats for that user only.
 
 ***note*** When you pick and <button>Search</button> by a users the chart will plot `All Entries` on the x-axis regardless if you didn't change the `view by` dropdown value.
