@@ -30,7 +30,7 @@ Homebrew install
 ```
 Now open up a terminal and `cd` to the folder that you downloaded the sg-log-reader-demo into.
 
-Once your in the above folder running this code by creating a Python Virtual Environment
+Once you are in the above folder run this code to create a Python Virtual Environment
 
 ```console
  pipenv shell 

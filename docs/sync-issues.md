@@ -17,7 +17,7 @@
 
 ### Not So Common Reasons Why Docs Don't Sync
 
-1. Starting multiples of the same exact replicator all at once leading to a fight by the replicators on getting/setting the same checkpoint.
+1. Starting multiples of the same exact replicator all at once leading to a fight by the replicators on setting the same checkpoint leading to checkpoints never moves up and sync stops.
 
 <img src="img/spiderman-meme.png" alt="Couchbase Lite Replicators" height="250px">
 
