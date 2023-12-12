@@ -7,16 +7,12 @@
 
 + Is there any configuration to the script ? +
 
-  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket.
+  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket. Click Here for more details about the config.json file [Install & Config](/install)
 
 
-+ Is What version of SG logs will it work on ? +
++ Is what version of SG logs will it work on ? +
 
   Its been testing with SG version 2.8.x to 3.0.1. Sorta works with 3.1.x
-
-+ Is there any configuration to the script ? +
-
-  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket.
 
 
   + What is the `sg_info.log` ? +
