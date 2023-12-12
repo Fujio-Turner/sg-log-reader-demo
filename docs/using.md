@@ -49,3 +49,7 @@ Just click the name of the user and it will pre populate the filter by username 
 ##### User Details:
 
 Once you `Search` by a user on the bottom it will show you all the indivudal replication events for that user for that DateTime. If you click on the row it will show the full raw SG log for the WebSocket ID.
+
+#### Bugs & New Feature Requests
+
+If you are wanting a new feature or there is a bug click here to report it: [SG Log Reader Demo - Issues](https://github.com/Fujio-Turner/sg-log-reader-demo/issues)

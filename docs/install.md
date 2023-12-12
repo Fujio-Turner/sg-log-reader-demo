@@ -1,6 +1,6 @@
-## Step 2. - Install & Configue
+## Step 2. - Install & Configure
 
-### Install 
+## Install 
 
 Python Virtual Environment:
 [https://pypi.org/project/pipenv/](https://pypi.org/project/pipenv/)
@@ -31,6 +31,11 @@ Install some Python libaries that will run in in your virtual environment.
 ## Configure
 
 Update the config.json with your CB settings and path to your `sg_info.log` file:
+
+<b>What</b>  and <b>Where</b> is a `sg_info.log` file? 
+<br>
+A: Click Here: [FAQ - sg_info.log](/faq)
+
 
  ```json
  {

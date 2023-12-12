@@ -27,4 +27,4 @@
 
 4. Starting to many replicators on the device. Example: You have a CBL replicator per channel , but there are 20-80 channels.
 
-<img src="img/everybody-gets-a-replicator.jpg" alt="Couchbase Lite Replicators per channel" height="230px">
+<img src="img/everybody-gets-a-replicator.jpeg" alt="Couchbase Lite Replicators per channel" height="230px">
