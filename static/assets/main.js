@@ -465,7 +465,7 @@ function  makeChartDiffSecStat(data){
         legend: { display: false }, 
       title: {
         display: true,
-        text: 'CBL Connected Times'
+        text: 'CBL Connected Times (Group By)'
       }
     },
       maintainAspectRatio: false,
@@ -528,7 +528,7 @@ function  makeChartChangeRange(data){
         legend: { display: false }, 
       title: {
         display: true,
-        text: '_changes Sent'
+        text: '_changes Sent (Group By)'
       }
     },
       maintainAspectRatio: false,
@@ -601,8 +601,11 @@ function makeChart(data){
 
   var from = new Date( $("#dtFrom").val());
   var to = new Date( $("#dtTo").val())
-  var xMin = Math.floor(new Date(from).getTime());
-  var xMax = Math.floor(new Date(to).getTime());
+  //var xMin = Math.floor(new Date(from).getTime());
+  //var xMax = Math.floor(new Date(to).getTime());
+
+  var xMin = 0
+  var xMax = 0
 
   if($('#searchByUser').val() !== ""){
     makeUserDetails(data)
@@ -610,6 +613,9 @@ function makeChart(data){
 
   $.each(data, function(key, value) {   
     var gTime = value.dt
+
+    if(key == 0){ xMin = value.dt }else{ xMax = value.dt }
+
     resultShow = resultShow + value.dtCount   
     valuesErrors.push({x:gTime,y:value.errors})
     valuesChangesCache.push({x:gTime,y:value.cRow})
@@ -624,7 +630,6 @@ function makeChart(data){
     valuesPushCount.push({x:gTime,y:value.pushCount})
     labelsJ.push(gTime) 
   });
-
 
   c1 = new Chart(ctx1, {
     type: 'line',
@@ -696,7 +701,7 @@ function makeChart(data){
           type: 'logarithmic'
         }, 
         x :{
-          type: 'time',
+          type: 'time'
         }
       },plugins: {
      
