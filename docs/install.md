@@ -50,5 +50,3 @@ A: Click Here: [FAQ - sg_info.log](/faq)
 "debug":false
 }
  ```
-
- [Go to Step 3. - Processing the Log File](/process)

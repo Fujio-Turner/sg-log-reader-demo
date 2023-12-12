@@ -23,7 +23,7 @@
 
 2. Load Balancer or Security Device killing the Websocket connection before the 5 minute keepalive is sent from CBL.
 
-3. Deleting Sync Gateway users while the user is replicating, but re-creating the same user later.
+3. Deleting SG users while the user is replicating, but re-creating the same user later.
 
 4. Starting to many replicators on the device. Example: You have a CBL replicator per channel , but there are 20-80 channels.
 

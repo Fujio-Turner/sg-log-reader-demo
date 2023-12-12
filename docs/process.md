@@ -23,5 +23,3 @@ After you get the above `Done - Per wsId: ...` data should be in your Couchbase 
 
 ###### More Notes
 I recently added Async to the script so you might get weird errors because it proccessing lots of websocket IDs at onec. It <i>Should</i> be ok :-|
-
-[Go to Step 4. - Using the Dashboard](/using)
