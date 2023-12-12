@@ -33,15 +33,15 @@ Now open up a terminal and `cd` to the folder that you downloaded the sg-log-rea
 Once your in the above folder running this code by creating a Python Virtual Environment
 
 ```console
-# pipenv shell 
+ pipenv shell 
 ```
 
 Install some Python libaries that will run in in your virtual environment.
 
 ```console
-# pipenv install couchbase
-# pipenv install flask
-# pipenv install icecream
+ pipenv install couchbase
+ pipenv install flask
+ pipenv install icecream
 ```
 
 

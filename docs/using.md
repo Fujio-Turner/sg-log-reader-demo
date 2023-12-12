@@ -1,10 +1,10 @@
 
 ### Getting the Dashboard
 
-To get to a dashboard to see stats you'll run a local python Flask Web Server. Run the command below to start the web server.
+To get to the dashboard to see stats you will run a local Python Flask Web Server. Run the command below to start the web server.
 
 ```console
-# python3 app.py config.json
+ python3 app.py config.json
 ```
 
 OUTPUT should look something like this.

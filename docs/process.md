@@ -3,7 +3,7 @@
 Let's parse the `sg_info.log` file. Run the command below in the directory of the sg-log-reader downloaded folder
 
 ```console
- # python3 sg-log-reader.py config.json
+ python3 sg-log-reader.py config.json
 ```
 
  The output should look like this below:

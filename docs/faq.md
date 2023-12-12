@@ -5,7 +5,7 @@
 
 **Q:** Is there any configuration to the script?
 
-**A:** Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket
+**A:** Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket.
 
 **Q:** What version of SG logs will it work on?
 
@@ -19,13 +19,17 @@
 
 **Q:** Where do I get this `sg_info.log` from? Where is it at?
 
-**A:** The default location for the SG log files are `/home/sync_gateway/logs/` there you will find `sg_info.log` OR do a [_sgcollect_info](https://docs.couchbase.com/sync-gateway/current/rest-api-admin.html#/Server/post__sgcollect_info) and it will create a zip with a bunch of SG logs and in it `sg_info.log` is also included.
+**A:** The default location for the SG log files are `/home/sync_gateway/logs/` there you will find `sg_info.log` OR do a [_sgcollect_info](https://docs.couchbase.com/sync-gateway/current/rest-api-admin.html#/Server/post__sgcollect_info) locally on the running SG machine and it will create a zip with a bunch of SG logs and in it `sg_info.log` is also included.
 
+<<<<<<< Updated upstream
 
 **Q:** My Docs in the `sg-log-reader` bucket are gone?
 
 **A:** Docs is the `sg-log-reader` bucket by default have a TTL(expire) in 24 hours. You can change the setting in the `config.json` file. Click here to [Configure JSON](/install)
 
 **Q:** If I have 2 or more SGsƒ behind a load balancer can I process them together and see the results in the dashboard?
+=======
+**Q:** If I have 2 or more SGs behind a load balancer can I process them together and see the results in the dashboard?
+>>>>>>> Stashed changes
 
 **A:** Yes you can be they will have different Websocket IDs. In the `config.json` there is a field to seperate the source. `"log-name":"test-today-node-0",  ///Optional: if you process multiple SG nodes you can tag the logs source here.` But there currently no way in the Dashboard to see which logs are from which SG node.
