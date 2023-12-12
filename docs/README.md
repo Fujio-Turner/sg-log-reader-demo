@@ -7,7 +7,7 @@ I created this tool to be able to debug Sync Gateway issue by getting a local co
 &#8678; Go through all the steps <b>[1 to 4]</b> on the left side bar to get up and running.
 
 - SG = Sync Gateway
-- CBL = Couchbase Lite
+- CBL = Couchbase Lites
 - CB = Couchbase
 
 #### Future - More
