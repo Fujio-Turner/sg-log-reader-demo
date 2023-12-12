@@ -4,13 +4,15 @@
 
 From the github.com/fujio-turner/sg-log-reader-demo repo
 
-Click Here [SG-Log-Reader-Demo Code](https://github.com/Fujio-Turner/sg-log-reader-demo)
+Click here to [Back To: SG Log Reader Demo - Github Repo](https://github.com/fujio-turner/sg-log-reader-demo)
 You can clone the repo or just download it as a zip file and unzip it too.
 ```console
 git clone https://github.com/Fujio-Turner/sg-log-reader-demo.git
 ```
 OR
+
 Download the as a ZIP file
+
 <img title="Download Github Code as a Zip" alt="Download Github Code as a Zip" src="https://helpdeskgeek.com/wp-content/pictures/2021/06/11CodeButtonDownloadZip.png">
 
 
