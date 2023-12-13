@@ -11,6 +11,12 @@
   -->
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify/themes/buble.css" />
   <link rel="stylesheet" href="//unpkg.com/docsify-accordion/src/style.css">
+  <style>
+    :root {
+      --docsifytabs-border-color: #ededed;
+      --docsifytabs-tab-highlight-color: rgb(18, 4, 213);
+    }
+  </style>
 </head>
 <body>
   <div id="app"></div>
@@ -23,6 +29,13 @@
     buttonText: 'Copy to clipboard',
     errorText: 'Error',
     successText: 'Copied',
+  },
+  tabs: {
+    persist    : true,      
+    sync       : true,      
+    theme      : 'classic', 
+    tabComments: true,      
+    tabHeadings: true    
   }
     }
   </script>
@@ -32,5 +45,6 @@
 <script src="https://unpkg.com/docsify-copy-code@2"></script>
 <script src="//unpkg.com/docsify-pagination/dist/docsify-pagination.min.js"></script>
 <script src="//unpkg.com/docsify-accordion/src/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docsify-tabs@1"></script>
 </body>
 </html>

@@ -1,48 +1,26 @@
 ## Step 2. - Install & Configure
 
-## Download the SG-Log-Reader-demo 
+### Download Executables
 
-From the github.com/fujio-turner/sg-log-reader-demo repo
-
-Click here to [Back To: SG Log Reader Demo - Github Repo](https://github.com/fujio-turner/sg-log-reader-demo)
-You can clone the repo or just download it as a zip file and unzip it too.
-```console
-git clone https://github.com/Fujio-Turner/sg-log-reader-demo.git
-```
-OR
-
-Download the as a ZIP file
-
-<img title="Download Github Code as a Zip" alt="Download Github Code as a Zip" src="https://helpdeskgeek.com/wp-content/pictures/2021/06/11CodeButtonDownloadZip.png">
+Click here to [SG Log Reader Demo - Github Repo: Releases](https://github.com/Fujio-Turner/sg-log-reader-demo/tree/master/releases)
 
 
-## Install 
+<!-- tabs:start -->
 
-Python Virtual Environment:
-[https://pypi.org/project/pipenv/](https://pypi.org/project/pipenv/)
+#### **Windows**
 
-or 
+In the main repo in the `releases\{version}` folder there are Windows(.exe).
 
-Homebrew install
+Download all three files into your local folder.
+  - sg-log-reader.exe
+  - app.exe  
+  - config.json
 
-```console
-# brew install pipenv
-```
-Now open up a terminal and `cd` to the folder that you downloaded the sg-log-reader-demo into.
+#### **macOS**
 
-Once you are in the above folder run this code to create a Python Virtual Environment
+Coming Soon
 
-```console
- pipenv shell 
-```
-
-Install some Python libaries that will run in in your virtual environment.
-
-```console
- pipenv install couchbase
- pipenv install flask
- pipenv install icecream
-```
+<!-- tabs:end -->
 
 
 ## Configure

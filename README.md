@@ -33,11 +33,11 @@ You just need to:
  
 #### Result
  It will:
-   Output all the Sync Gateway's databases
-   Output a list of names of all device users.
-   Output a graph of all the synced that happen from the: Begin & Date you picked.
-   You can pick a specific user to drill down to.
-   you can pick a specific sync for a specific user.
+  - Output all the Sync Gateway's databases
+  - Output a list of names of all device users.
+  - Output a graph of all the synced that happen from the: Begin & DateTime you picked.
+  - You can pick a specific user to drill down to.
+    - pick a specific sync(s) for a specific user.
 
 
 ###### Click here to get started: [Docs - SG Log Reader Demo](https://fujio-turner.github.io/sg-log-reader-demo/)

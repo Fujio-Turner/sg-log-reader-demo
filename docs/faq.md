@@ -1,18 +1,9 @@
 ### FAQ
 
 
-+ What version of Python do I need ? +
-
-  Python 3.6+
-
-+ Is there any configuration to the script ? +
-
-  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket. Click Here for more details about the config.json file [Install & Config](/install)
 
 
-+ Is what version of SG logs will it work on ? +
 
-  Its been testing with SG version 2.8.x to 3.0.1. Sorta works with 3.1.x
 
 
   + What is the `sg_info.log` ? +
@@ -24,7 +15,21 @@
 
   The default location for the SG log files are `/home/sync_gateway/logs/` there you will find `sg_info.log` OR do a [_sgcollect_info](https://docs.couchbase.com/sync-gateway/current/rest-api-admin.html#/Server/post__sgcollect_info) locally on the running SG machine and it will create a zip with a bunch of SG logs and in it `sg_info.log` is also included.
 
+  + Is there any configuration to the script ? +
+
+  Yes, there is a config.json file that you can update with things like credentials to a Couchbase bucket. Click Here for more details about the config.json file [Install & Config](/install)
+
+
+  + Is what version of SG logs will it work on ? +
+
+  Its been testing with SG version 2.8.x to 3.0.1. Sorta works with 3.1.x
+
+  + The sg-log-file scripts are not working why? +
+
+  Check the log file it creates. It's ussually because the script can not connect to the Couchbase Server. misspelled bucket name , wrong username & password .... etc. So double check the  `config.json`
+
   + If I have 2 or more SGs behind a load balancer can I process them together and see the results in the dashboard ? +
 
   Yes you can be they will have different Websocket IDs. In the `config.json` there is a field to seperate the source. `"log-name":"test-today-node-0",  ///Optional: if you process multiple SG nodes you can tag the logs source here.` But there currently no way in the Dashboard to see which logs are from which SG node.
+
 

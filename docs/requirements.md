@@ -1,8 +1,6 @@
 ## Step 1. - Requirements
 ### Requirements:
 
-- Python 3.6 or greater
-
 - Couchbase Cluster 7.x with Index & Query Services
 
 - Couchbase Bucket (named: `sg-log-reader._default._default`)

@@ -1,22 +1,23 @@
 
 ### Getting the Dashboard
 
-To get to the dashboard to see stats you will run a local Python Flask Web Server. Run the command below to start the web server.
+To get to the dashboard run the below command.
+
+<!-- tabs:start -->
+
+#### **Windows**
 
 ```console
- python3 app.py config.json
+app.exe config.json
 ```
 
-OUTPUT should look something like this.
+#### **macOS**
 
-```console
- * Serving Flask app 'app'
- * Debug mode: off
-WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:8080
- * Running on http://192.168.0.193:8080
-```
+Coming Soon
+
+<!-- tabs:end -->
+
+
 
 Now open up your web browser and go to: [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
