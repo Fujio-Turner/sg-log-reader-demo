@@ -28,6 +28,9 @@ class work():
 	cbCollectionName = "_default"
 	cbColl = None
 	logData = None
+	logfile = None
+	logFileName = "app.log"
+	logFilePath = "logs/"
 	wsIdList = {}
 	wasBlipLines = False
 	oldWsDic = {}
@@ -38,6 +41,10 @@ class work():
 		self.readConfigFile(file)
 		self.debugIceCream()
 		self.makeCB()
+
+	def __del__(self):
+		self.logfile.close()
+		sys.stdout = sys.__stdout__
 
 	def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
@@ -56,7 +63,6 @@ class work():
 			auth = PasswordAuthenticator(self.cbUser, self.cbPass)
 			self.cluster = Cluster('couchbase://'+self.cbHost, ClusterOptions(auth))
 			self.cluster.wait_until_ready(timedelta(seconds=5))
-
 			self.cb = self.cluster.bucket(self.cbBucketName)
 			#self.cbColl = self.cb.scope(self.cbScopeName).collection(self.cbCollectionName)
 			self.cbColl = self.cb.default_collection()
@@ -66,6 +72,9 @@ class work():
 
 
 	def debugIceCream(self):
+		self.logfile = open(self.logFilePath+self.logFileName, 'w')
+		sys.stdout = self.logfile
+
 		if self.debug == True:
 			ic.enable();
 		else:
