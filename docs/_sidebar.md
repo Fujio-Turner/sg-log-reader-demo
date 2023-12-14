@@ -1,5 +1,4 @@
 <!-- docs/_sidebar.md -->
-
 * [Docs Home](/)
 * [Step 1. - Requirements](requirements.md)
 * [Step 2. - Download & Configure](install.md)
