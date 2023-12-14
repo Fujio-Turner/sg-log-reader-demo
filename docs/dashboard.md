@@ -8,7 +8,7 @@ To get to the dashboard run the below command.
 #### **macOS**
 
 ```console
-chmod +x app.py
+chmod +x app
 ```
 
 ```console
@@ -24,7 +24,6 @@ app.exe config.json
 ```
 
 <!-- tabs:end -->
-
 
 
 Now open up your web browser and go to: [http://127.0.0.1:8080](http://127.0.0.1:8080)
