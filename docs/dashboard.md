@@ -5,15 +5,23 @@ To get to the dashboard run the below command.
 
 <!-- tabs:start -->
 
+#### **macOS**
+
+```console
+chmod +x app.py
+```
+
+```console
+./app config.json
+```
+
 #### **Windows**
+
+Comming Soon
 
 ```console
 app.exe config.json
 ```
-
-#### **macOS**
-
-Coming Soon
 
 <!-- tabs:end -->
 

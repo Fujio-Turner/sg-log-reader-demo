@@ -5,18 +5,28 @@ Let's parse the `sg_info.log` file.
 
 <!-- tabs:start -->
 
+#### **macOS**
+
+Open up a terminal and  `cd` command into the directory of the sg-log-reader downloaded folder and run the file pointing to the config.json
+
+```console
+chmod +x sg-log-reader
+```
+
+```console
+./sg-log-reader config.json
+```
+
+
 #### **Windows**
+
+Coming Soon
 
 Open up a terminal and  `cd` command into the directory of the sg-log-reader downloaded folder and run the file pointing to the config.json
 
 ```console
 sg-log-reader.exe config.json
 ```
-
-#### **macOS**
-
-Coming Soon
-
 <!-- tabs:end -->
 
 

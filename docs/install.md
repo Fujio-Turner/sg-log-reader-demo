@@ -7,8 +7,16 @@ Click here to [SG Log Reader Demo - Github Repo: Releases](https://github.com/Fu
 
 <!-- tabs:start -->
 
+#### **macOS**
+
+Download all three files into your local folder.
+  - sg-log-reader
+  - app  
+  - config.json
+
 #### **Windows**
 
+Coming Soon
 In the main repo in the `releases\{version}` folder there are Windows(.exe).
 
 Download all three files into your local folder.
@@ -16,9 +24,7 @@ Download all three files into your local folder.
   - app.exe  
   - config.json
 
-#### **macOS**
 
-Coming Soon
 
 <!-- tabs:end -->
 

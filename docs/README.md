@@ -16,8 +16,7 @@ I created this tool to be able to debug SG issue by getting a local copy of a SG
 #### NEW
 
 version 2.1.0
-- Windows(.exe)
-- Logging to File
+- macOS executable
 
 #### Future - More
 In the future this will do more features to better understand other things going on inside SG. If you are wanting a new feature or there is a bug click here to report it: [SG Log Reader Demo - Issues](https://github.com/Fujio-Turner/sg-log-reader-demo/issues)
