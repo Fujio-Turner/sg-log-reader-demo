@@ -56,7 +56,6 @@ class work():
 			auth = PasswordAuthenticator(self.cbUser, self.cbPass)
 			self.cluster = Cluster('couchbase://'+self.cbHost, ClusterOptions(auth))
 			self.cluster.wait_until_ready(timedelta(seconds=5))
-
 			self.cb = self.cluster.bucket(self.cbBucketName)
 			#self.cbColl = self.cb.scope(self.cbScopeName).collection(self.cbCollectionName)
 			self.cbColl = self.cb.default_collection()
