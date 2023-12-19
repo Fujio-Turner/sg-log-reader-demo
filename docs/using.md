@@ -99,7 +99,7 @@ HIDE DATA: Just click the color box of the item you don't want to show in the ch
 You can click on the line charts and PAN left or right by dragging it. If you hold down the `SHIFT` and select in the chart it will create a `zoom` box for you pick a section of the chart your more interesting in. There is a `Zoom Reset` button on the left. The two line charts will adjust themselves to the new x-axis on zoom and/or pan too.
 
 
-##### _changes: Cache  vs Miss Hit - Bar Chart
+##### _changes: Cache Hit vs Miss - Bar Chart
 
 <div>
  <img src="img/cache-hit-bar.png" alt="Dashboard">
@@ -161,7 +161,7 @@ NOTE: By default when SG does a SQL++ for channel it gets 5,000 result every 1 s
 <div>
  <img src="img/connected-time-bar.png" alt="Dashboard">
  </div>
- This chart groups the number how long a replication is open by:
+ This chart groups the times of how long a replication is open by:
 
  - \# of _changes sent = 1 Second or Less
  - \# of _changes sent = 2 to 10 Seconds
