@@ -111,7 +111,7 @@ This chart gives insight into more of whats going on with the 1st charts `_chang
 <div>
  <img src="img/changes-group-by.png" alt="Dashboard">
  </div>
- This chart groups the number of items by 10X:
+ This chart groups the number of _changes feed items were sent to CBL by 10X groups:
 
  - \# of _changes sent = Zero
  - \# of _changes sent = 1 to 10 changes sent
@@ -125,7 +125,7 @@ This chart gives insight into more of whats going on with the 1st charts `_chang
 <div>
  <img src="img/miss-full-sync-pie.png" alt="Dashboard">
  </div>
- This pie chart shows out of the total number of Syncs:
+ This pie chart shows total number of Syncs which:
 
 - Fully Sync, EX. 1,000 _changes items sent & Pulled down 1,000 docs
 - Missing Sync , EX. 1,000 _changes items sent & Pulled down <b>50</b> docs 
@@ -171,7 +171,7 @@ NOTE: By default when SG does a SQL++ for channel it gets 5,000 result every 1 s
  - \# of _changes sent = 2 to 5 Minutes
  - ... etc to 1 hour or More
 
-NOTE: Just because a CBL device is connected a "long" time doesn't mean it took all that time to sync. It could already have finished pull and pushing data in seconds but has a continuous replication waiting for newest changes.
+NOTE: Just because a CBL device is connected for a "long" time doesn't mean it took all that time to sync. It could already have finished pulling and pushing data/docs in seconds but has a continuous replication open waiting for newest changes.
 
 #### Bugs & New Feature Requests
 
