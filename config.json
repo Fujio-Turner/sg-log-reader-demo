@@ -7,5 +7,5 @@
 "log-name":"sg_info.log",
 "cb-expire":86400,
 "dt-log-line-offset":0,
-"debug":true
+"debug":false
 }
