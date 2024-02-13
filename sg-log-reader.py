@@ -82,25 +82,25 @@ class work():
     async def diffdates(self, d1, d2):
         return (time.mktime(time.strptime(d2, "%Y-%m-%dT%H:%M:%S")) - time.mktime(time.strptime(d1, "%Y-%m-%dT%H:%M:%S")))
 
-	async def debugIceCream(self):
-		if self.debug == True:
-			ic.enable();
-		else:
-			ic.disable()
+    async def debugIceCream(self):
+        if self.debug == True:
+            ic.enable();
+        else:
+            ic.disable()
 
-	async def readConfigFile(self,configFile):
-		a = open(configFile, "rb" )
-		b = json.loads(a.read())
-		self.sgLogName = b["file-to-parse"]
-		self.cbHost = b["cb-cluster-host"]
-		self.cbBucket = b["cb-bucket-name"]
-		self.cbUser = b["cb-bucket-user"]
-		self.cbPass = b["cb-bucket-user-password"]
-		self.debug = b["debug"]
-		self.sgDtLineOffset = b["dt-log-line-offset"]
-		self.sgLogTag = b["log-name"]
-		self.cbTtl = b['cb-expire']
-		a.close()
+    async def readConfigFile(self,configFile):
+        a = open(configFile, "rb" )
+        b = json.loads(a.read())
+        self.sgLogName = b["file-to-parse"]
+        self.cbHost = b["cb-cluster-host"]
+        self.cbBucketName = b["cb-bucket-name"]
+        self.cbUser = b["cb-bucket-user"]
+        self.cbPass = b["cb-bucket-user-password"]
+        self.debug = b["debug"]
+        self.sgDtLineOffset = b["dt-log-line-offset"]
+        self.sgLogTag = b["log-name"]
+        self.cbTtl = b['cb-expire']
+        a.close()
 
     async def openSgLogFile(self):
         index = 0	
