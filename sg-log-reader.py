@@ -92,7 +92,7 @@ class work():
 		b = json.loads(a.read())
 		self.sgLogName = b["file-to-parse"]
 		self.cbHost = b["cb-cluster-host"]
-		self.cbBucket = b["cb-bucket-name"]
+		self.cbBucketName = b["cb-bucket-name"]
 		self.cbUser = b["cb-bucket-user"]
 		self.cbPass = b["cb-bucket-user-password"]
 		self.debug = b["debug"]

@@ -528,7 +528,7 @@ function  makeChartChangeRange(data){
         legend: { display: false }, 
       title: {
         display: true,
-        text: '_changes Sent (Group By)'
+        text: '# of Items Sent in _changes (Group By)'
       }
     },
       maintainAspectRatio: false,
