@@ -30,7 +30,7 @@ class work():
 	logData = None
 	logfile = None
 	logFileName = "app.log"
-	logFilePath = "logs/"
+	logFilePath = "/logs/"
 	wsIdList = {}
 	wasBlipLines = False
 	oldWsDic = {}
@@ -56,6 +56,7 @@ class work():
 		self.cbPass = b["cb-bucket-user-password"]
 		self.debug = b["debug"]
 		self.sgLogTag = b["log-name"]
+		self.logFilePath = b["debug-log-path"]
 		a.close()
 
 	def makeCB(self):
@@ -72,11 +73,11 @@ class work():
 
 
 	def debugIceCream(self):
-		self.logfile = open(self.logFilePath+self.logFileName, 'w')
-		sys.stdout = self.logfile
 
 		if self.debug == True:
 			ic.enable();
+			self.logfile = open(self.logFilePath+self.logFileName, 'w')
+			sys.stdout = self.logfile
 		else:
 			ic.disable()
 			
