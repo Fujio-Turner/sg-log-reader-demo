@@ -97,7 +97,7 @@ class work():
         self.cbUser = b["cb-bucket-user"]
         self.cbPass = b["cb-bucket-user-password"]
         self.debug = b["debug"]
-        self.sgDtLineOffset = b["dt-log-line-offset"]
+        ##self.sgDtLineOffset = b["dt-log-line-offset"]
         self.sgLogTag = b["log-name"]
         self.cbTtl = b['cb-expire']
         a.close()
@@ -296,6 +296,7 @@ class work():
             "attSuccess":r[15],
             "pullAttCount":r[17],
             "pushCount":r[14],
+            "pushProposeCount":r[18],
             "pushAttCount": r[13],				
             "sentCount":r[12],
             "filterBy":r[5],
@@ -342,6 +343,7 @@ class work():
         pullAttCount = 0
         attSuc = 0
         pushCount = 0
+        pushProposeCount = 0
         pushAttachCount = 0
         since = None
         filterBy = False
@@ -362,6 +364,7 @@ class work():
                     'pullAttCount':0,
                     'attSuc':0,
                     'pushCount':0,
+                    'pushProposeCount':0,
                     'pushAttachCount':0,
                     'since':None,
                     'filterBy':False,
@@ -372,6 +375,9 @@ class work():
                     'continuous':None,
                     'passIt':0
                     }
+        
+        crudPattern = r"\sCRUD:\sc:\[[a-f0-9]+\]\s"
+
         #for x in self.logData[startLogLine:]:
         for a in range(startLogLine, self.logNumberOflines):
             x = self.logData[a]
@@ -389,10 +395,17 @@ class work():
                     changesChannels[c[1]] = True
                     continue
                 if "GetChangesInChannel(" in x:
-                    d = self.changeQueryCount(x)					
+                    d = await self.changeQueryCount(x)					
                     queryRow = queryRow + d[0]
                     changesChannels[d[1]] = True
                     continue
+
+                if "rows from query for " in x:
+                    d = await self.changeQueryCountByRow(x)					
+                    queryRow = queryRow + d[0]
+                    changesChannels[d[1]] = True
+                    continue
+
                 if " Continuous:" in x and " SyncMsg:" in x:
                     continuous = await self.findContinuous(x)
 
@@ -414,10 +427,15 @@ class work():
                 #push from CBL 
                 if "Type:proposeChanges" in x:
                     p = await self.findPushCount(x)
-                    pushCount = pushCount + p
+                    pushProposeCount = pushProposeCount + p
                     continue
+
                 if "Added attachment" in x and "CRUD:" in x:
                     pushAttachCount +=1
+                    continue
+
+                if re.search(crudPattern, x):
+                    pushCount += 1
                     continue
 
                 if "409 Document update conflict" in x:
@@ -426,10 +444,15 @@ class work():
                 if "[ERR]" in x or "Error retrieving changes for channel" in x:
                     errorCount += 1
                     continue
+
                 if "Error " in x and ".go:" in x and "[WRN]" not in x: 
                     # for 'revocation' changes feed errors
                     errorCount += 1
                     continue
+
+                if 'error' in x.lower():
+                    errorCount += 1
+
                 if "[WRN]" in x:
                     warningCount += 1
                     continue				
@@ -453,10 +476,10 @@ class work():
             if passIt >= self.logLineDepthLevel:
                 filterByChannels.sort()
                 changesChannels = sorted(changesChannels.keys())
-                return [logLine, since, channelRow, queryRow, filterBy, filterByChannels, blipClosed, blipOpened, continuous, conflictCount, errorCount, warningCount, sent, pushAttachCount, pushCount, attSuc, changesChannels, pullAttCount]
+                return [logLine, since, channelRow, queryRow, filterBy, filterByChannels, blipClosed, blipOpened, continuous, conflictCount, errorCount, warningCount, sent, pushAttachCount, pushCount, attSuc, changesChannels, pullAttCount,pushProposeCount]
         filterByChannels.sort()
         changesChannels = sorted(changesChannels.keys())
-        return [logLine, since, channelRow, queryRow, filterBy, filterByChannels, blipClosed, blipOpened, continuous, conflictCount, errorCount, warningCount, sent, pushAttachCount, pushCount, attSuc, changesChannels, pullAttCount]
+        return [logLine, since, channelRow, queryRow, filterBy, filterByChannels, blipClosed, blipOpened, continuous, conflictCount, errorCount, warningCount, sent, pushAttachCount, pushCount, attSuc, changesChannels, pullAttCount,pushProposeCount]
 
     async def changeCacheCount(self, line):
         a = line.split(" ")
@@ -477,7 +500,7 @@ class work():
         else:
             return [int(a[7]),c[0]]
 
-    def changeQueryCount(self, line):
+    async def changeQueryCount(self, line):
         a = line.split(" ")
         ic(a)
 
@@ -491,6 +514,14 @@ class work():
             b = line.split('GetChangesInChannel("')  # PRE SG 3.1
             c = b[1].split('"')
             return [int(a[6]),c[0]]
+        
+
+    async def changeQueryCountByRow(self,line):
+        number = re.search(r'Got (\d+) rows', line).group(1)  
+        # Extracting the double-quoted string using regular expression
+        quoted_string = re.search(r'for "([^"]+)"', line).group(1)  
+        return [int(number), quoted_string]
+
 
     async def getTimeFromLine(self, line):
         return [line[0+self.sgDtLineOffset:19+self.sgDtLineOffset].rstrip("-"), line[0+self.sgDtLineOffset:24+self.sgDtLineOffset].rstrip("-")]
@@ -578,7 +609,7 @@ class work():
         a = x.split("#Changes: ")
         ic(a)
         return int(a[1])
-
+    
     async def n1qlQueryInfo(self, x):
 
         if "Query: N1QL Query" in x:

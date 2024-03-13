@@ -1056,6 +1056,12 @@ c3 = new Chart(ctx3, {
             row = row + '<td>' +value.conflicts + '</td>'
           }
 
+          if(value.warnings > 0){
+            row = row + '<td><span style="color: orange;">' +value.warnings+"</span></td>";
+          }else{
+            row = row + '<td>' +value.warnings + '</td>'
+          }
+
           if(value.errors > 0){
             row = row + '<td><span style="color: red;">' +value.errors+"</span></td>";
           }else{

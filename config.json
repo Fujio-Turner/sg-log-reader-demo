@@ -4,7 +4,7 @@
 "cb-cluster-host":"127.0.0.1",
 "cb-bucket-name":"sg-log-reader",
 "cb-bucket-user":"Administrator",
-"cb-bucket-user-password":"fujiofujio",
+"cb-bucket-user-password":"password",
 "cb-expire":86400,
 "debug":false,
 "debug-log-path":"/home/"
