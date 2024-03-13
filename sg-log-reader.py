@@ -137,6 +137,7 @@ class work():
 
 
     async def findBlipLine(self, x, lineNumb):
+
         if "/_blipsync" in x and "GUEST" not in x: 
             self.blipLineCount += 1
             userN = await self.getUserName(x)
@@ -190,29 +191,41 @@ class work():
             t = ''
         return t
 
+
     async def getUserName(self, line):
-
-        c = line.split(" ")
-        #c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
-        sgDb = c[6].split("/")[1]
-        usrN = c[-1].rstrip(')')
-
+    # Check if the expected pattern exists in the line
         if "<ud>" in line and "</ud>" in line:
-            pattern = r'\(as <ud>(.*?)</ud>\)'
-            # Use re.search to find the first match for the pattern in the log line
-            match = re.search(pattern, line)
-            # If a match is found, print the matched string
-            if match:
-                return [sgDb, match.group(1)]
+
+                    # Pattern to match the database name between / and /_blipsync
+            db_pattern = r'/([^/]+)/_blipsync'
+            db_match = re.search(db_pattern, line)
+            
+            # Pattern to match the username between <ud> and </ud>
+            user_pattern = r'<ud>(.*?)</ud>'
+            user_match = re.search(user_pattern, line)
+            
+            if db_match:
+                dbname = db_match.group(1)
+            
+            if user_match:
+                username = user_match.group(1)
+
+            return[dbname,username]
+
         else:
+
+            # Fallback to splitting method if pattern not found
+            c = line.split(" ")
+            sgDb = c[6].split("/")[1]
+            usrN = c[-1].rstrip(')')
             return [sgDb, usrN]
+ 
 
     async def getUserNameBlip(self, line):
         #c = re.findall(r"\(([A-Za-z0-9_]+)\)", line)
-
-
         if "<ud>" in line and "</ud>" in line:
-            pattern = r'\(as <ud>(.*?)</ud>\)'
+            pattern = r'<ud>(.*?)</ud>'
+            #pattern = r'\(as <ud>(.*?)</ud>\)'
             # Use re.search to find the first match for the pattern in the log line
             match = re.search(pattern, line)
             # If a match is found, print the matched string
@@ -232,14 +245,6 @@ class work():
     async def getDataPerWsId(self):
         print("Starting - Per wsId : ", datetime.datetime.now())
         ic(self.wsIdList)
-        '''
-        list_of_tasks = []
-        for key, x in self.wsIdList.items():
-            list_of_tasks.append(self.getDataPerWsIdWorker(x))
-        result = await asyncio.gather(*list_of_tasks,return_exceptions=True)
-        ic(x,result)
-        print("Done - Per wsId : ",datetime.datetime.now())
-        '''
         list_of_tasks = []
         for key, x in self.wsIdList.items():
             list_of_tasks.append(self.getDataPerWsIdWorker(x))
