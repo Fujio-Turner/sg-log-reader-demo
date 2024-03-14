@@ -28,6 +28,9 @@ class work():
 	cbCollectionName = "_default"
 	cbColl = None
 	logData = None
+	logfile = None
+	logFileName = "app.log"
+	logFilePath = "/logs/"
 	wsIdList = {}
 	wasBlipLines = False
 	oldWsDic = {}
@@ -39,6 +42,10 @@ class work():
 		self.debugIceCream()
 		self.makeCB()
 
+	def __del__(self):
+		#self.logfile.close()
+		sys.stdout = sys.__stdout__
+
 	def readConfigFile(self,configFile):
 		a = open(configFile, "rb" )
 		b = json.loads(a.read())
@@ -49,6 +56,7 @@ class work():
 		self.cbPass = b["cb-bucket-user-password"]
 		self.debug = b["debug"]
 		self.sgLogTag = b["log-name"]
+		self.logFilePath = b["debug-log-path"]
 		a.close()
 
 	def makeCB(self):
@@ -65,8 +73,11 @@ class work():
 
 
 	def debugIceCream(self):
+
 		if self.debug == True:
 			ic.enable();
+			#self.logfile = open(self.logFilePath+self.logFileName, 'w')
+			sys.stdout = self.logfile
 		else:
 			ic.disable()
 			
@@ -119,13 +130,13 @@ class work():
 
 		if rangeData["viewBy"] and rangeData["viewBy"] in ["sec","min"]:
 		
-			q = q + ' floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+'*1000 as `dt`, COUNT(floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+'*1000) as `dtCount` , SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` ' 
+			q = q + ' floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+'*1000 as `dt`, COUNT(floor((u.dtFullEpoch/'+dtSplit+'))*'+dtSplit+'*1000) as `dtCount` , SUM(u.`dtDiffSec`) as `dtDiffSec`,  SUM(u.`cRow`) as `cRow` , SUM(u.`qRow`) as `qRow`, SUM(u.`tRow`) as `tRow`, SUM(u.`conflicts`) as `conflicts`, SUM(u.`errors`) as `errors` , SUM(u.`sentCount`) as `sentCount`, SUM(u.`pushAttCount`) as `pushAttCount`, SUM(u.`pushCount`) as `pushCount`, SUM(u.`pullAttCount`) as `pullAttCount` , SUM(u.`warnings`) as `warnings` ' 
 		
 		else:
 			if rangeData["pie"] and rangeData["pie"] == True:
 				q = q + '  u.`tRow`, u.`sentCount` , u.`since` ,u.`cRow` , u.`qRow` ' 
 			else: 
-				q = q + ' u.`dtFullEpoch`*1000 as `dt`, MILLIS_TO_STR(u.`dtFullEpoch` * 1000, "HH:mm:ss") as `dtClock` , 1 as `dtCount`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ' 
+				q = q + ' u.`dtFullEpoch`*1000 as `dt`, MILLIS_TO_STR(u.`dtFullEpoch` * 1000, "HH:mm:ss") as `dtClock` , 1 as `dtCount`,u.`user`,meta(u).id as cbKey, u.`dtDiffSec`, u.`cRow`,u.`qRow`,u.`tRow`,u.`conflicts`,u.`errors` , u.`sentCount`, u.`blipC`,u.`since`, u.`pushAttCount`, u.`pushCount`,u.`pullAttCount` ,`warnings` ' 
 
 		q = q + ' FROM `'+self.cbBucketName+'`.`'+self.cbScopeName +'`.`'+ self.cbCollectionName+'` as u WHERE u.`docType` = "byWsId"'
 		q = q + ' AND u.`dtFullEpoch` BETWEEN $startDtEpoch AND $endDtEpoch ' 

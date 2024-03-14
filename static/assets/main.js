@@ -528,7 +528,7 @@ function  makeChartChangeRange(data){
         legend: { display: false }, 
       title: {
         display: true,
-        text: '_changes Sent (Group By)'
+        text: '# of Items Sent in _changes (Group By)'
       }
     },
       maintainAspectRatio: false,
@@ -1054,6 +1054,12 @@ c3 = new Chart(ctx3, {
             row = row + '<td><span style="color: orange;">' +value.conflicts+"</span></td>";
           }else{
             row = row + '<td>' +value.conflicts + '</td>'
+          }
+
+          if(value.warnings > 0){
+            row = row + '<td><span style="color: orange;">' +value.warnings+"</span></td>";
+          }else{
+            row = row + '<td>' +value.warnings + '</td>'
           }
 
           if(value.errors > 0){
