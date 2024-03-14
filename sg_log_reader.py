@@ -56,7 +56,7 @@ class work():
         asyncio.run(self.main(file))
 
     def __del__(self):
-        self.logfile.close()
+        #self.logfile.close()
         sys.stdout = sys.__stdout__
 
     async def main(self, file):
@@ -210,7 +210,7 @@ class work():
             if user_match:
                 username = user_match.group(1)
 
-            return[dbname,username]
+            return [dbname, username]
 
         else:
 
