@@ -40,4 +40,5 @@ You just need to:
     - pick a specific sync(s) for a specific user.
 
 
-###### Click here to get started: [Docs - SG Log Reader Demo](https://fujio-turner.github.io/sg-log-reader-demo/)
+###### Click below to get started: 
+### [Docs - SG Log Reader Demo](https://fujio-turner.github.io/sg-log-reader-demo/)

@@ -7,14 +7,14 @@ Let's parse the `sg_info.log` file.
 
 #### **macOS**
 
-Open up a terminal and  `cd` command into the directory of the sg-log-reader downloaded folder and run the file pointing to the config.json
+Open up a terminal and  `cd` command into the directory of the sg_log_reader downloaded folder and run the file pointing to the config.json
 
 ```console
-chmod +x sg-log-reader
+chmod +x sg_log_reader
 ```
 
 ```console
-./sg-log-reader config.json
+./sg_log_reader config.json
 ```
 
 
@@ -25,7 +25,7 @@ Coming Soon
 Open up a terminal and  `cd` command into the directory of the sg-log-reader downloaded folder and run the file pointing to the config.json
 
 ```console
-sg-log-reader.exe config.json
+sg_log_reader.exe config.json
 ```
 <!-- tabs:end -->
 
