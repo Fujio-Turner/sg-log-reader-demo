@@ -1,7 +1,16 @@
+import os
 import sys
 import json
 from datetime import timedelta
 from icecream import ic
+
+import re
+import datetime, time
+import uuid
+import cProfile
+import pstats
+import hashlib
+import asyncio
 
 import traceback
 
@@ -14,15 +23,6 @@ from couchbase.exceptions import DocumentNotFoundException
 from couchbase.collection import InsertOptions , UpsertOptions
 
 #https://github.com/couchbase/docs-sdk-python/blob/release/3.1/modules/howtos/examples/caching_flask.py
-
-import re
-import datetime, time
-import uuid
-import cProfile
-import pstats
-import hashlib
-
-import asyncio
 
 class work():
     debug = False
@@ -56,7 +56,6 @@ class work():
         asyncio.run(self.main(file))
 
     def __del__(self):
-        #self.logfile.close()
         sys.stdout = sys.__stdout__
 
     async def main(self, file):
@@ -108,32 +107,36 @@ class work():
         print("Starting - Reading Data File: ", datetime.datetime.now())
         #with open(self.sgLogName, "r") as a:
         #	b = [line.strip() for line in a.readlines()]
-        counter = 1
-        with open(self.sgLogName, "r") as a:
-            for x in a:
-                counter +=1
-                ic(x)
-                line = x.rstrip('\r|\n')
-                self.logData.append(line)
-                await self.importCheck(line)
-                await self.sqlCheck(line)
-                #await self.sgDb(line)  ## this is very noisey
-                await self.generalErrors(line)
-                await self.wsErrors(line)
-                #await self.replicateCheck(line)
-                await self.dcpChecks(line)
-                #await self.sgStarts(line)
-                if self.wasBlipLines == True:
-                    await self.findWsId(line, index)
-                await self.findBlipLine(line, index)
-                index +=1
-        self.logNumberOflines = counter
-        self.logLineDepthLevel = counter * self.logLineDepthPercent
-        print("Number - Lines in log file: ", counter)
-        print("Number - WebSocket Connections: ", self.blipLineCount)
-        print("Done - Reading Data File: ", datetime.datetime.now())
+        if os.path.exists(self.sgLogName):
+            counter = 1
+            with open(self.sgLogName, "r") as a:
+                for x in a:
+                    counter +=1
+                    ic(x)
+                    line = x.rstrip('\r|\n')
+                    self.logData.append(line)
+                    await self.importCheck(line)
+                    await self.sqlCheck(line)
+                    #await self.sgDb(line)  ## this is very noisey
+                    await self.generalErrors(line)
+                    await self.wsErrors(line)
+                    #await self.replicateCheck(line)
+                    await self.dcpChecks(line)
+                    #await self.sgStarts(line)
+                    if self.wasBlipLines == True:
+                        await self.findWsId(line, index)
+                    await self.findBlipLine(line, index)
+                    index +=1
+            self.logNumberOflines = counter
+            self.logLineDepthLevel = counter * self.logLineDepthPercent
+            print("Number - Lines in log file: ", counter)
+            print("Number - WebSocket Connections: ", self.blipLineCount)
+            print("Done - Reading Data File: ", datetime.datetime.now())
 
-        await self.getDataPerWsId()
+            await self.getDataPerWsId()
+        else:
+            print("Error: File not found: ", self.sgLogName)
+            exit()
 
 
     async def findBlipLine(self, x, lineNumb):
