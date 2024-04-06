@@ -169,6 +169,8 @@ class work():
 
     async def findWsId(self, wsLine, index):
         if "Upgraded to BLIP+WebSocket protocol" in wsLine or "Upgraded to WebSocket" in wsLine:
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("Find Blip Line: ", index, wsLine)
             c = re.findall(r"\[([A-Za-z0-9_]+)\]", wsLine)
             if len(c) > 1:
                 #check if ws in new or old
@@ -300,36 +302,36 @@ class work():
                 df = None
             isoDt = await self.iso8601_to_epoch(tf[1])
             d = {
-            "docType":"byWsId",
-            "user":x["user"],
-            "sgDb":x["sgDb"],
-            "sgColl":{},				
-            "dtFullEpoch":isoDt,
-            "dt":tf[0],
-            "dtEnd":tl[0],
-            "dtDiffSec":df,
-            "since":sinceList,
-            "continuous":r[8],
-            "conflicts":r[9],
-            "errors":r[10],
-            "warnings":r[11],
-            "cRow":r[2],
-            "qRow":r[3],
-            "tRow":tRow,
-            "attSuccess":r[15],
-            "pullAttCount":r[17],
-            "pushCount":r[14],
-            "pushProposeCount":r[18],
-            "pushAttCount": r[13],				
-            "sentCount":r[12],
-            "filterBy":r[5],
-            "changesChannels":r[16],
-            "logTag":self.sgLogTag,
-            "blipC":r[6],
-            "blipO":r[7],
-            "auth":True,
-            "orphane":False,
-            "log":r[0]
+                "docType": "byWsId",
+                "user": x["user"],
+                "sgDb": x["sgDb"],
+                "sgColl": {},				
+                "dtFullEpoch": isoDt,
+                "dt": tf[0],
+                "dtEnd": tl[0],
+                "dtDiffSec": df,
+                "since": sinceList,
+                "continuous": r[8],
+                "conflicts": r[9],
+                "errors": r[10],
+                "warnings": r[11],
+                "cRow": r[2],
+                "qRow": r[3],
+                "tRow": tRow,
+                "attSuccess": r[15],
+                "pullAttCount": r[17],
+                "pushCount": r[14],
+                "pushProposeCount": r[18],
+                "pushAttCount": r[13],				
+                "sentCount": r[12],
+                "filterBy": r[5],
+                "changesChannels": r[16],
+                "logTag": self.sgLogTag,
+                "blipC": r[6],
+                "blipO": r[7],
+                "auth": True,
+                "orphane": False,
+                "log": r[0]
             }
         else:
             hash_object = hashlib.md5()
@@ -337,19 +339,19 @@ class work():
             #w = str(uuid.uuid1())
             w = hash_object.hexdigest()
             d = {
-            "docType":"byWsId",
-            "user":x["user"],
-            "sgDb":x["sgDb"],
-            "sgColl":{},	
-            "dtFullEpoch":x['dtFullEpoch'],
-            "dt":x['dt'],
-            "rRow":0,
-            "qRow":0,
-            "tRow":0,
-            "logTag":self.sgLogTag,
-            "auth":False,
-            "orphane":True,
-            "log":[]
+                "docType": "byWsId",
+                "user": x["user"],
+                "sgDb": x["sgDb"],
+                "sgColl": {},	
+                "dtFullEpoch": x['dtFullEpoch'],
+                "dt": x['dt'],
+                "rRow": 0,
+                "qRow": 0,
+                "tRow": 0,
+                "logTag": self.sgLogTag,
+                "auth": False,
+                "orphane": True,
+                "log": []
             }
         asyncio.create_task(self.cbUpsert(w, d, self.cbTtl))
         return [w, d]
@@ -406,6 +408,8 @@ class work():
             x = self.logData[a]
 
             if wsId in x and "WS" not in x:
+                if "*" in self.debug or "wsId" in self.debug:
+                    ic("WSID found in line : ", wsId, x)
                 if blipClosed is False:
                     passIt = 0
                 cleanLine = x.rstrip('\r|\n')
@@ -812,11 +816,15 @@ class work():
         return False
     
     async def cbInsert(self, key, doc,ttl=0):
+        if "*" in self.debug or "cb" in self.debug:
+            ic("CB Insert: Key:", key, "Doc:", doc)
+            
         #opts = InsertOptions(timeout=timedelta(seconds=5))
         try:
             #r = self.cbColl.insert(key,doc,opts,expiry=timedelta(seconds=ttl))
             r = await self.cbColl.insert(key, doc, expiry=timedelta(seconds=ttl))
-            ic(r)
+            if "*" in self.debug or "cb" in self.debug:
+                ic(r)
             return r
         except CouchbaseException:
             ic(traceback.format_exc())
@@ -825,10 +833,13 @@ class work():
         
     async def cbUpsert(self, key, doc, ttl=0):
         #opts = InsertOptions(timeout=timedelta(seconds=5))
+        if "*" in self.debug or "cb" in self.debug:
+            ic("CB Upsert: Key:", key, "Doc:", doc)
         try:
             #r = self.cbColl.upsert(key,doc,opts,expiry=timedelta(seconds=ttl))
             r = await self.cbColl.upsert(key, doc, expiry=timedelta(seconds=ttl))
-            ic(r)
+            if "*" in self.debug or "cb" in self.debug:
+                ic(r)
             return r
         except CouchbaseException:
             ic(traceback.format_exc())
@@ -839,7 +850,8 @@ class work():
         try:
             result = await self.cbColl.get(key)
             r = result.content_as[dict]
-            ic(r)
+            if "*" in self.debug or "cb" in self.debug:
+                ic("CB Get: Key:", key, "Result:", r)
             return r
         except DocumentNotFoundException:
             return False
@@ -849,6 +861,8 @@ class work():
             return False
     
     async def cbSubDocAppend(self, key, value, data, ttl=0):
+        if "*" in self.debug or "cb" in self.debug:
+            ic("CB SubDoc Append: Key:", key, "Value:", value, "Data:", data)
         try:
             r = await self.cbColl.mutate_in(key, SD.upsert(value, data),)
             ic(r)
@@ -861,6 +875,8 @@ class work():
             return False
         
     async def cbSubDocInsert(self, key, value, data,ttl=0):
+        if "*" in self.debug or "cb" in self.debug:
+            ic("CB SubDoc Insert: Key:", key, "Value:", value, "Data:", data)
         try:
             r = await self.cbColl.mutate_in(key, SD.insert(value, data),)
             ic(r)
@@ -872,10 +888,11 @@ class work():
             ic("Error: SubDoc Insert for: ", key)
             return False
 
-    async def cbSubDocFind(self, key, value):		
+    async def cbSubDocFind(self, key, value):	
         try:
             r = await self.cbColl.lookup_in(key, SD.get(value))
-            ic(r)
+            if "*" in self.debug or "cb" in self.debug:
+                ic("CB SubDoc Get: Key",key,"Value:",value,"Result:",r)
             return r
         except DocumentNotFoundException:
             return False
