@@ -25,7 +25,13 @@ from couchbase.collection import InsertOptions , UpsertOptions
 #https://github.com/couchbase/docs-sdk-python/blob/release/3.1/modules/howtos/examples/caching_flask.py
 
 class work():
-    debug = False
+    debug = []
+    ### debug options: 
+    ### "*" = all
+    ### "wsId" = wsid log processing
+    ### "cb" = couchbase ops
+    ### "listMake" = anything related to making WsId list
+    ### "listMakeRaw" = raw output of the file + counter
     cb = None
     sgLogName = "sg_info.log"
     cbHost = "127.0.0.1"
@@ -82,8 +88,8 @@ class work():
         return (time.mktime(time.strptime(d2, "%Y-%m-%dT%H:%M:%S")) - time.mktime(time.strptime(d1, "%Y-%m-%dT%H:%M:%S")))
 
     async def debugIceCream(self):
-        if self.debug == True:
-            ic.enable();
+        if self.debug != []:
+            ic.enable()
         else:
             ic.disable()
 
@@ -112,7 +118,8 @@ class work():
             with open(self.sgLogName, "r") as a:
                 for x in a:
                     counter +=1
-                    ic(x)
+                    if "*" in self.debug or "makeListRaw" in self.debug:
+                        ic(counter, x)
                     line = x.rstrip('\r|\n')
                     self.logData.append(line)
                     await self.importCheck(line)
@@ -132,6 +139,11 @@ class work():
             print("Number - Lines in log file: ", counter)
             print("Number - WebSocket Connections: ", self.blipLineCount)
             print("Done - Reading Data File: ", datetime.datetime.now())
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("makeListBig:",self.wsIdList)
+                ic("Number - Lines in log file: ", counter)
+                ic("Number - WebSocket Connections: ", self.blipLineCount)
+               
 
             await self.getDataPerWsId()
         else:
@@ -142,6 +154,8 @@ class work():
     async def findBlipLine(self, x, lineNumb):
 
         if "/_blipsync" in x and "GUEST" not in x: 
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("BlipLine: ", lineNumb, x)
             self.blipLineCount += 1
             userN = await self.getUserName(x)
             t = await self.getTimeFromLine(x)
@@ -150,6 +164,8 @@ class work():
             isoDt = await self.iso8601_to_epoch(t[1])
             self.wsIdList[k] = {"user":userN[1], "sgDb":userN[0], "auth":False, "dt":t[0], "dtFullEpoch":isoDt, "http":httpNum}
             self.wasBlipLines = True
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("BlipLine: ", self.wsIdList[k])
 
     async def findWsId(self, wsLine, index):
         if "Upgraded to BLIP+WebSocket protocol" in wsLine or "Upgraded to WebSocket" in wsLine:
@@ -247,7 +263,6 @@ class work():
 
     async def getDataPerWsId(self):
         print("Starting - Per wsId : ", datetime.datetime.now())
-        ic(self.wsIdList)
         list_of_tasks = []
         for key, x in self.wsIdList.items():
             list_of_tasks.append(self.getDataPerWsIdWorker(x))
@@ -362,26 +377,26 @@ class work():
         continuous = None
         passIt = 0
         wsProcData = {
-                    'logLine':[],
-                    'channelRow':0,
-                    'queryRow':0,
-                    'conflictCount':0,
-                    'errorCount':0,
-                    'warningCount':0,
-                    'sent':0,
-                    'pullAttCount':0,
-                    'attSuc':0,
-                    'pushCount':0,
-                    'pushProposeCount':0,
-                    'pushAttachCount':0,
-                    'since':None,
-                    'filterBy':False,
-                    'blipClosed':False,
-                    'blipOpened':False,
-                    'filterByChannels':[],
-                    'changesChannels':{},
-                    'continuous':None,
-                    'passIt':0
+                    'logLine': [],
+                    'channelRow': 0,
+                    'queryRow': 0,
+                    'conflictCount': 0,
+                    'errorCount': 0,
+                    'warningCount': 0,
+                    'sent': 0,
+                    'pullAttCount': 0,
+                    'attSuc': 0,
+                    'pushCount': 0,
+                    'pushProposeCount': 0,
+                    'pushAttachCount': 0,
+                    'since': None,
+                    'filterBy': False,
+                    'blipClosed': False,
+                    'blipOpened': False,
+                    'filterByChannels': [],
+                    'changesChannels': {},
+                    'continuous': None,
+                    'passIt': 0
                     }
         
         crudPattern = r"\sCRUD:\sc:\[[a-f0-9]+\]\s"
@@ -543,25 +558,34 @@ class work():
 
     async def dcpChecks(self, x):
         if "DCP:" in x:
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("DCP:", x)
             t = await self.getTimeFromLine(x)
             if "error" in x or "Error" in x:
-                ic(t[0], x)
+                if "*" in self.debug or "makeList" in self.debug:
+                    ic("DCP:", t[0], x)
                 e = await self.errorTempDoc(t[0], t[1], "dcp")
                 return e
 
     async def importCheck(self, x):
         if "Import:" in x:
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("Import:", x)
             t = await self.getTimeFromLine(x)
             if "error" in x or "Error" in x:
-                ic(t[0], x)
+                if "*" in self.debug or "makeList" in self.debug:
+                    ic(t[0], x)
                 r = await self.errorTempDoc(t[0], t[1], "import")
                 return r
     
     async def sqlCheck(self, x):
         if "Query:" in x:
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("Query:", x)
             t = await self.getTimeFromLine(x)
             if "error" in x or "Error" in x:
-                ic(t[0], x)
+                if "*" in self.debug or "makeList" in self.debug:
+                    ic("Query:", t[0], x)
                 r = await self.errorTempDoc(t[0], t[1], "query")
                 return r	
 
@@ -575,17 +599,23 @@ class work():
 
     async def wsErrors(self, x):
         if " WS: " in x:
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("WS Error:",x)
             t = await self.getTimeFromLine(x)
             if "error" in x or "Error" in x:
-                ic(t[0], x)
+                if "*" in self.debug or "makeList" in self.debug:
+                    ic("WS Error:", t[0], x)
                 r = await self.errorTempDoc(t[0], t[1], "ws")
                 return r	
 
     async def generalErrors(self, x):
         if "[ERR]" in x:
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("SG Process Error",x)
             t = await self.getTimeFromLine(x)
             if "error" in x or "Error" in x:
-                ic(t[0], x)
+                if "*" in self.debug or "makeList" in self.debug:
+                    ic("SG Process Error:", t[0], x)
                 r = await self.errorTempDoc(t[0], t[1], "gen")
                 return r	
 

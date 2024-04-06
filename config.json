@@ -6,6 +6,6 @@
 "cb-bucket-user":"Administrator",
 "cb-bucket-user-password":"password",
 "cb-expire":86400,
-"debug":false,
+"debug":[],
 "debug-log-path":"/home/"
 }
