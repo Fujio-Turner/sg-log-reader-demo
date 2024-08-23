@@ -81,7 +81,7 @@ class work():
             self.cb = await bucket.on_connect()
             return cluster, self.cb
         except CouchbaseException as ex:
-            print("nope CB", ex)
+            print("CB Connetion Error:", ex)
             ic("Error: Could not connect to CB Cluster: " , self.cbHost, " as: ", self.cbUser)
             exit()
     async def diffdates(self, d1, d2):
