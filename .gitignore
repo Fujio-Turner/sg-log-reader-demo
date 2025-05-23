@@ -1,1 +1,22 @@
+# macOS
 .DS_Store
+
+# Log files
+*.log
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Flask-specific files
+instance/
+*.flaskenv
+*.env
