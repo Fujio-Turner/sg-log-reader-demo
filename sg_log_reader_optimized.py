@@ -172,19 +172,26 @@ class work():
                 if self.wasBlipLines:
                     await self.findWsId(line, index)
                 await self.findBlipLine(line, index)
+                # Check for orphaned WebSocket activity
+                await self.findOrphanedWsActivity(line, index)
                 
         self.logNumberOflines = counter
         self.logLineDepthLevel = counter * self.logLineDepthPercent
         
         print("Number - Lines in log file: ", counter)
         print("Number - WebSocket Connections: ", self.blipLineCount)
+        print("Number - Orphaned WebSocket IDs found: ", len(self.orphanedWsIds))
         print("Done - Reading Data File: ", datetime.datetime.now())
         
         if "*" in self.debug or "makeList" in self.debug:
             ic("makeListBig:",self.wsIdList)
+            ic("Orphaned WebSockets:", self.orphanedWsIds)
             ic("Number - Lines in log file: ", counter)
             ic("Number - WebSocket Connections: ", self.blipLineCount)
+            ic("Number - Orphaned WebSocket IDs: ", len(self.orphanedWsIds))
 
+        # Process orphaned WebSockets first
+        await self.processOrphanedWebSockets()
         await self.getDataPerWsIdOptimized()
 
     async def process_file_stream(self, file):
@@ -293,6 +300,286 @@ class work():
                 return d.split(":")[1]
             if c[16] != "":
                 return c[16].rstrip(')')
+
+    async def findOrphanedWsActivity(self, line, index):
+        """
+        Detect WebSocket activity for connections that started before this log file.
+        Look for WebSocket IDs in brackets [ws-xxx] that aren't in our known wsIdList.
+        """
+        # Look for WebSocket IDs in square brackets
+        ws_pattern = r'\[([ws-][A-Za-z0-9_-]+)\]'
+        ws_matches = re.findall(ws_pattern, line)
+        
+        if ws_matches:
+            for ws_id in ws_matches:
+                # Check if this WebSocket ID is already known
+                known_ws = False
+                for key, ws_data in self.wsIdList.items():
+                    if 'ws' in ws_data and ws_data['ws'] == ws_id:
+                        known_ws = True
+                        break
+                
+                # If not known, it's orphaned
+                if not known_ws:
+                    if "*" in self.debug or "makeList" in self.debug:
+                        ic("Orphaned WebSocket found:", ws_id, line)
+                    
+                    # Initialize orphaned WebSocket tracking
+                    if ws_id not in self.orphanedWsIds:
+                        t = await self.getTimeFromLine(line)
+                        isoDt = await self.iso8601_to_epoch(t[1])
+                        
+                        self.orphanedWsIds[ws_id] = {
+                            "user": f"UNKNOWN:{ws_id}",
+                            "sgDb": "unknown",
+                            "auth": False,
+                            "dt": t[0],
+                            "dtFullEpoch": isoDt,
+                            "ws": ws_id,
+                            "startLine": index,
+                            "orphaned": True,
+                            "firstSeen": t[0],
+                            "firstSeenEpoch": isoDt
+                        }
+                        self.orphanedWsLines[ws_id] = []
+                    
+                    # Store the line for this orphaned WebSocket
+                    self.orphanedWsLines[ws_id].append(line)
+
+    async def processOrphanedWebSockets(self):
+        """
+        Process all orphaned WebSockets and create documents for them.
+        Include tracking flags for what metrics can/cannot be calculated.
+        """
+        print("Processing orphaned WebSockets...")
+        
+        for ws_id, ws_data in self.orphanedWsIds.items():
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("Processing orphaned WebSocket:", ws_id)
+            
+            # Analyze what we can track for this orphaned WebSocket
+            tracking_capabilities = await self.analyzeOrphanedWsCapabilities(ws_id)
+            
+            # Get first and last timestamps
+            lines = self.orphanedWsLines.get(ws_id, [])
+            if not lines:
+                continue
+                
+            first_line = lines[0]
+            last_line = lines[-1]
+            
+            tf = await self.getTimeFromLine(first_line)
+            tl = await self.getTimeFromLine(last_line)
+            
+            # Calculate what we can
+            df = None
+            if tf[0] and tl[0]:
+                try:
+                    df = await self.diffdates(tf[0], tl[0])
+                except:
+                    df = None
+            
+            # Create orphaned WebSocket document
+            orphaned_doc = {
+                "docType": "byWsId",
+                "user": ws_data["user"],
+                "sgDb": ws_data["sgDb"],
+                "sgColl": {},
+                "dtFullEpoch": ws_data["dtFullEpoch"],
+                "dt": ws_data["dt"],
+                "dtEnd": tl[0] if tl[0] else ws_data["dt"],
+                "dtDiffSec": df,
+                "since": tracking_capabilities.get("since_values", []),
+                "continuous": tracking_capabilities.get("continuous"),
+                "conflicts": tracking_capabilities.get("conflicts", 0),
+                "errors": tracking_capabilities.get("errors", 0),
+                "warnings": tracking_capabilities.get("warnings", 0),
+                "cRow": tracking_capabilities.get("cache_rows", 0),
+                "qRow": tracking_capabilities.get("query_rows", 0),
+                "tRow": tracking_capabilities.get("total_rows", 0),
+                "attSuccess": tracking_capabilities.get("att_success", 0),
+                "pullAttCount": tracking_capabilities.get("pull_att_count", 0),
+                "pushCount": tracking_capabilities.get("push_count", 0),
+                "pushProposeCount": tracking_capabilities.get("push_propose_count", 0),
+                "pushAttCount": tracking_capabilities.get("push_att_count", 0),
+                "sentCount": tracking_capabilities.get("sent_count", 0),
+                "filterBy": tracking_capabilities.get("filter_by", False),
+                "changesChannels": tracking_capabilities.get("channels", []),
+                "logTag": self.sgLogTag,
+                "blipC": tracking_capabilities.get("blip_closed", False),
+                "blipO": tracking_capabilities.get("blip_opened", False),
+                "auth": False,
+                "orphaned": True,
+                "firstSeen": ws_data["firstSeen"],
+                "firstSeenEpoch": ws_data["firstSeenEpoch"],
+                "lineCount": len(lines),
+                
+                # Tracking capabilities flags
+                "trackChange": tracking_capabilities.get("can_track_changes", False),
+                "trackSince": tracking_capabilities.get("can_track_since", False),
+                "trackChannels": tracking_capabilities.get("can_track_channels", False),
+                "trackTiming": tracking_capabilities.get("can_track_timing", True),
+                "trackErrors": tracking_capabilities.get("can_track_errors", True),
+                "trackMetrics": tracking_capabilities.get("can_track_metrics", True),
+                
+                # Store limited log lines (not all to save space)
+                "log": lines[:100] if len(lines) > 100 else lines  # Limit to first 100 lines
+            }
+            
+            # Use batch upsert for performance
+            key = f"orphaned:{ws_id}"
+            await self.batch_upsert(key, orphaned_doc, self.cbTtl)
+            
+            if "*" in self.debug or "makeList" in self.debug:
+                ic("Orphaned WebSocket processed:", ws_id, "lines:", len(lines))
+
+    async def analyzeOrphanedWsCapabilities(self, ws_id):
+        """
+        Analyze what metrics can be tracked for an orphaned WebSocket
+        based on the log lines we have.
+        """
+        lines = self.orphanedWsLines.get(ws_id, [])
+        
+        capabilities = {
+            "can_track_changes": False,
+            "can_track_since": False,
+            "can_track_channels": False,
+            "can_track_timing": True,  # We can always track timing from available lines
+            "can_track_errors": True,  # We can always count errors
+            "can_track_metrics": True,  # We can track basic metrics
+            "since_values": [],
+            "channels": [],
+            "cache_rows": 0,
+            "query_rows": 0,
+            "total_rows": 0,
+            "conflicts": 0,
+            "errors": 0,
+            "warnings": 0,
+            "sent_count": 0,
+            "pull_att_count": 0,
+            "push_count": 0,
+            "push_propose_count": 0,
+            "push_att_count": 0,
+            "att_success": 0,
+            "continuous": None,
+            "filter_by": False,
+            "blip_closed": False,
+            "blip_opened": False
+        }
+        
+        channels_found = set()
+        
+        for line in lines:
+            # Check for various patterns and update capabilities
+            
+            # Since values
+            if "Since:" in line and "SyncMsg:" in line:
+                capabilities["can_track_since"] = True
+                if "Since:0 " in line:
+                    capabilities["since_values"].append("0")
+                else:
+                    since_val = await self.findSince(line)
+                    if since_val:
+                        capabilities["since_values"].append(since_val)
+            
+            # Channel information
+            if "GetCachedChanges(\"" in line or "GetChangesInChannel(" in line:
+                capabilities["can_track_changes"] = True
+                capabilities["can_track_channels"] = True
+                
+                if "GetCachedChanges(\"" in line:
+                    try:
+                        c = await self.changeCacheCount(line)
+                        capabilities["cache_rows"] += c[0]
+                        channels_found.add(c[1])
+                    except:
+                        pass
+                        
+                if "GetChangesInChannel(" in line:
+                    try:
+                        d = await self.changeQueryCount(line)
+                        capabilities["query_rows"] += d[0]
+                        channels_found.add(d[1])
+                    except:
+                        pass
+            
+            # Filter information
+            if "Filter:sync_gateway/bychannel" in line:
+                capabilities["filter_by"] = True
+                try:
+                    filter_channels = await self.findChannelsList(line)
+                    channels_found.update(filter_channels)
+                except:
+                    pass
+            
+            # Continuous replication
+            if " Continuous:" in line and " SyncMsg:" in line:
+                try:
+                    capabilities["continuous"] = await self.findContinuous(line)
+                except:
+                    pass
+            
+            # Metrics we can always track
+            if " changes to client, from seq " in line:
+                try:
+                    j = await self.findSentCount(line)
+                    capabilities["sent_count"] += j
+                except:
+                    pass
+                    
+            if " proveAttachment successful for doc " in line:
+                capabilities["att_success"] += 1
+                
+            if "Type:getAttachment Digest:" in line:
+                capabilities["pull_att_count"] += 1
+                
+            if "Type:proposeChanges" in line:
+                try:
+                    p = await self.findPushCount(line)
+                    capabilities["push_propose_count"] += p
+                except:
+                    pass
+                    
+            if "Added attachment" in line and "CRUD:" in line:
+                capabilities["push_att_count"] += 1
+                
+            if self.CRUD_PATTERN.search(line):
+                capabilities["push_count"] += 1
+                
+            if "409 Document update conflict" in line:
+                capabilities["conflicts"] += 1
+                
+            if "[ERR]" in line or "Error retrieving changes for channel" in line:
+                capabilities["errors"] += 1
+                
+            if "Error " in line and ".go:" in line and "[WRN]" not in line:
+                capabilities["errors"] += 1
+                
+            if 'error' in line.lower():
+                capabilities["errors"] += 1
+                
+            if "[WRN]" in line:
+                capabilities["warnings"] += 1
+                
+            # Connection state
+            if "BLIP+WebSocket connection closed" in line:
+                capabilities["blip_closed"] = True
+                
+            if "Upgraded to" in line and "WebSocket protocol" in line:
+                capabilities["blip_opened"] = True
+        
+        # Set channels
+        capabilities["channels"] = sorted(list(channels_found))
+        capabilities["total_rows"] = capabilities["cache_rows"] + capabilities["query_rows"]
+        
+        # Determine if we have enough data for meaningful change tracking
+        if capabilities["cache_rows"] > 0 or capabilities["query_rows"] > 0:
+            capabilities["can_track_changes"] = True
+            
+        if len(capabilities["channels"]) > 0:
+            capabilities["can_track_channels"] = True
+        
+        return capabilities
 
     async def getDataPerWsIdOptimized(self):
         """Optimized WebSocket data processing with batching"""
