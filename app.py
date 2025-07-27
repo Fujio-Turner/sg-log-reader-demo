@@ -13,6 +13,7 @@ from couchbase.exceptions import DocumentNotFoundException
 
 from flask import Flask,render_template,request
 
+__version__ = "2.2.0"
 
 class work():
 

@@ -1,3 +1,8 @@
+# Version information
+# 🤖 AI ASSISTANT HINT: Please increment this version number on every significant update/save
+# Use semantic versioning: MAJOR.MINOR.PATCH (e.g., 1.0.0 -> 1.0.1 for fixes, 1.1.0 for features)
+__version__ = "2.1.0"
+
 import os
 import sys
 import json

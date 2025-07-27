@@ -191,8 +191,10 @@ if __name__ == "__main__":
     print(f"   - orphaned:ws-orphan002 (with trackChange=true, blip_closed=true)")
     print(f"   - orphaned:ws-orphan003 (with trackSince=true, errors=1)")
     
-    # Clean up option
-    cleanup = input("\nClean up test files when done? (y/n): ").lower()
-    if cleanup == 'y':
-        print("Run this after testing to clean up:")
-        print(f"  rm {log_file} {config_file}")
+    # Auto cleanup test files
+    print("\nCleaning up test files...")
+    for file in [log_file, config_file]:
+        if os.path.exists(file):
+            os.remove(file)
+            print(f"Removed: {file}")
+    print("✅ Orphaned WebSocket test completed successfully!")

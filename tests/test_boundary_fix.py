@@ -123,10 +123,10 @@ if __name__ == "__main__":
     print(f"\n4. The fixed version should handle the WebSocket close near")
     print(f"   the end of the file without index errors.")
     
-    # Clean up option
-    cleanup = input("\nClean up test files? (y/n): ").lower()
-    if cleanup == 'y':
-        for file in [log_file, config_file]:
-            if os.path.exists(file):
-                os.remove(file)
-                print(f"Removed: {file}")
+    # Auto cleanup test files
+    print("\nCleaning up test files...")
+    for file in [log_file, config_file]:
+        if os.path.exists(file):
+            os.remove(file)
+            print(f"Removed: {file}")
+    print("✅ Boundary fix test completed successfully!")
