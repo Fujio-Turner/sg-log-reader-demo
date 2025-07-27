@@ -55,7 +55,7 @@ class work():
     sgLogName = "sg_info.log"
     cbHost = "127.0.0.1"
     cbUser = "Administrator"
-    cbPass = "fujiofujio"
+    cbPass = "password"
     cbBucketName = "sg-log-reader"
     cbScopeName = "_default"
     cbCollectionName = "_default"
